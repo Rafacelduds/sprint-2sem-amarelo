@@ -1,0 +1,16 @@
+{
+  "name": "@amarelo/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "openapi-ts -i ../../openapi.json -o src/generated"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.87.3"
+  }
+}
+

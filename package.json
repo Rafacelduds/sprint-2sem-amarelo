@@ -1,0 +1,15 @@
+{
+  "name": "sprint-amarelo",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/api-client"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @amarelo/web",
+    "build": "npm run build --workspace @amarelo/web",
+    "test": "npm run test --workspace @amarelo/web",
+    "generate:api": "npm run generate --workspace @amarelo/api-client"
+  }
+}
+

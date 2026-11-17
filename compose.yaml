@@ -1,0 +1,90 @@
+name: sprint-amarelo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-amarelo}
+      POSTGRES_USER: ${POSTGRES_USER:-amarelo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-amarelo}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-amarelo} -d ${POSTGRES_DB:-amarelo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  s3:
+    image: localstack/localstack:3.8
+    environment:
+      SERVICES: s3
+      AWS_DEFAULT_REGION: ${S3_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-test}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-test}
+      S3_BUCKET: ${S3_BUCKET:-raw-data}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./infra/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
+      S3_BUCKET: ${S3_BUCKET:-raw-data}
+      S3_REGION: ${S3_REGION:-us-east-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  collector:
+    build:
+      context: .
+      dockerfile: apps/collector/Dockerfile
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
+      S3_BUCKET: ${S3_BUCKET:-raw-data}
+      S3_REGION: ${S3_REGION:-us-east-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-/api}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres_data:
+  localstack_data:
+

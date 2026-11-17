@@ -1,0 +1,31 @@
+[project]
+name = "amarelo-api"
+version = "0.1.0"
+description = "API da Sprint Amarelo"
+requires-python = ">=3.13"
+dependencies = [
+  "alembic>=1.17.2,<2",
+  "asyncpg>=0.31.0,<1",
+  "boto3>=1.41.0,<2",
+  "fastapi>=0.121.0,<1",
+  "pydantic-settings>=2.12.0,<3",
+  "sqlalchemy[asyncio]>=2.0.44,<3",
+  "uvicorn[standard]>=0.38.0,<1",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28.1,<1",
+  "pyright>=1.1.407,<2",
+  "pytest>=9.0.0,<10",
+  "pytest-asyncio>=1.3.0,<2",
+  "ruff>=0.14.5,<1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/api"]
+
