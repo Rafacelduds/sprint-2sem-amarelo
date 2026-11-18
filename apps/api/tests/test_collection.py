@@ -63,6 +63,35 @@ async def test_authentication_failure_hides_secret() -> None:
         assert "private-token" not in str(error.value)
 
 
+@pytest.mark.parametrize("company", [None, 5])
+@pytest.mark.asyncio
+async def test_missing_vehicle_list_is_invalid_positions(company: int | None) -> None:
+    body = b'{"l":[{"c":"701A-10","qv":5}]}'
+    async with httpx.AsyncClient(
+        base_url="https://example.test/",
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, content=body)),
+    ) as client:
+        source = OlhoVivo(client, "test")
+        source.authenticated = True
+        with pytest.raises(SourceError, match="^invalid_positions$"):
+            await source.snapshot(company)
+
+
+@pytest.mark.parametrize("company", [None, 5])
+@pytest.mark.asyncio
+async def test_explicit_empty_vehicle_list_remains_valid(company: int | None) -> None:
+    body = b'{"l":[{"c":"701A-10","vs":[]}]}'
+    async with httpx.AsyncClient(
+        base_url="https://example.test/",
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, content=body)),
+    ) as client:
+        source = OlhoVivo(client, "test")
+        source.authenticated = True
+        snapshot = await source.snapshot(company)
+        assert snapshot.body == body
+        assert snapshot.positions.lines[0].vs == []
+
+
 @pytest.mark.parametrize(
     "body", [b"null", b"{}", b"not-json", b'{"l":[{"vs":[{"ta":"2026-05-01T12:00:00"}]}]}']
 )

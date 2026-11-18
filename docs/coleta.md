@@ -47,6 +47,8 @@ Uma resposta e suas posições são gravadas na mesma transação. Uma falha pos
 
 ## Validação
 
+A lista `vs` é obrigatória em cada linha das respostas de operação e garagem. Sua ausência gera `invalid_positions`, sem registrar um sucesso vazio; uma lista explicitamente informada como `vs: []` continua válida. Campos ausentes dentro de um veículo continuam nulos, conforme o contrato da US01.
+
 Testes HTTP usam respostas sintéticas e não exigem token nem chamam SPTrans. Para testar persistência real, defina `TEST_DATABASE_URL` apontando para PostgreSQL de desenvolvimento/testes com permissão de criar schemas e rode `uv run pytest`. Os testes criam e removem apenas schemas próprios aleatórios; sem a variável, esses casos são omitidos. A CI fornece um banco dedicado e executa as migrações.
 
 A meta de 99% de ciclos no mês depende de medição operacional. Sucesso nesta implementação significa que todas as consultas previstas do ciclo foram persistidas; não comprova que a origem informou toda a frota real. Retentativas, alerta e retomada serão acrescentados pela [US29](https://trello.com/c/3d9fUCnh), dependente desta base.
