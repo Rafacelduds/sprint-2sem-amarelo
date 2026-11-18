@@ -67,12 +67,34 @@ services:
     environment:
       PYTHONPATH: /workspace/apps/api/src
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
-      OLHOVIVO_TOKEN: ${OLHOVIVO_TOKEN:-}
+      OLHOVIVO_TOKEN: ${CHAVE_API_OLHO_VIVO:-${OLHOVIVO_TOKEN:-}}
       COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-30}
       COLLECTION_TIMEOUT_SECONDS: ${COLLECTION_TIMEOUT_SECONDS:-5}
       COLLECTION_ALERT_WEBHOOK: ${COLLECTION_ALERT_WEBHOOK:-}
     depends_on:
       api:
+        condition: service_healthy
+
+  archiver:
+    profiles: [arquivo]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: [".venv/bin/python", "-m", "api.storage", "archive", "--watch"]
+    healthcheck:
+      disable: true
+    environment:
+      PYTHONPATH: /workspace/apps/api/src
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
+      S3_BUCKET: ${S3_BUCKET:-raw-data}
+      S3_REGION: ${S3_REGION:-us-east-1}
+    depends_on:
+      api:
+        condition: service_healthy
+      s3:
         condition: service_healthy
 
   web:

@@ -7,7 +7,7 @@ import hashlib
 import http.cookiejar
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -35,9 +35,7 @@ def read_key_from_env_file(path: Path) -> str | None:
 def get_api_key() -> str:
     api_key = os.environ.get("CHAVE_API_OLHO_VIVO") or read_key_from_env_file(ENV_FILE)
     if not api_key:
-        raise RuntimeError(
-            "Defina CHAVE_API_OLHO_VIVO no ambiente ou em apps/api/.env."
-        )
+        raise RuntimeError("Defina CHAVE_API_OLHO_VIVO no ambiente ou em apps/api/.env.")
     return api_key
 
 
@@ -54,14 +52,7 @@ def request_bytes(opener, request: Request, *, operation: str) -> bytes:
 def default_output(captured_at: datetime) -> Path:
     day = captured_at.strftime("%Y-%m-%d")
     timestamp = captured_at.strftime("%Y%m%dT%H%M%SZ")
-    return (
-        REPOSITORY_ROOT
-        / "data"
-        / "raw"
-        / "olho-vivo"
-        / day
-        / f"posicao-{timestamp}.json"
-    )
+    return REPOSITORY_ROOT / "data" / "raw" / "olho-vivo" / day / f"posicao-{timestamp}.json"
 
 
 def collect(output: Path | None = None) -> dict[str, object]:
@@ -72,16 +63,14 @@ def collect(output: Path | None = None) -> dict[str, object]:
         ("Accept", "application/json"),
     ]
     auth_query = urlencode({"token": api_key})
-    auth_request = Request(
-        f"{BASE_URL}/Login/Autenticar?{auth_query}", data=b"", method="POST"
+    auth_request = Request(f"{BASE_URL}/Login/Autenticar?{auth_query}", data=b"", method="POST")
+    authenticated = (
+        request_bytes(opener, auth_request, operation="Autenticação").decode("utf-8").strip()
     )
-    authenticated = request_bytes(
-        opener, auth_request, operation="Autenticação"
-    ).decode("utf-8").strip()
     if authenticated != "true":
         raise RuntimeError("A API Olho Vivo recusou a autenticação.")
 
-    captured_at = datetime.now(timezone.utc)
+    captured_at = datetime.now(UTC)
     payload = request_bytes(
         opener,
         Request(f"{BASE_URL}/Posicao", method="GET"),

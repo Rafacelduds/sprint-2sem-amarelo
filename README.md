@@ -145,5 +145,10 @@ proveniência está em
 
 O coletor Olho Vivo roda em processo separado, com intervalo configurável,
 posições em operação e garagens e persistência no PostgreSQL. Configure
-`OLHOVIVO_TOKEN` no `.env` privado e consulte [execução e contrato da coleta](docs/coleta.md).
+`CHAVE_API_OLHO_VIVO` (ou `OLHOVIVO_TOKEN`) em `apps/api/.env` e consulte
+[execução e contrato da coleta](docs/coleta.md).
 O serviço Docker é opcional, ativado pelo profile `coleta`.
+
+O arquivador da US12 preserva as respostas da inbox no S3 em JSON.gz imutável,
+sem bloquear a coleta quando o S3 fica indisponível. Comandos de arquivamento,
+importação histórica e proveniência estão no contrato de armazenamento acima.

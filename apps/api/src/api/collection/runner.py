@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import UUID
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -13,13 +13,19 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from api.collection.alerts import WebhookAlert
 from api.collection.source import OlhoVivo, SourceError
 from api.collection.store import PostgresStore
+from api.config import Settings
 
 logger = logging.getLogger(__name__)
 
 
 class CollectionSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
-    olhovivo_token: SecretStr = SecretStr("")
+    model_config = SettingsConfigDict(
+        env_file=Settings.model_config.get("env_file"), extra="ignore", hide_input_in_errors=True
+    )
+    olhovivo_token: SecretStr = Field(
+        default=SecretStr(""),
+        validation_alias=AliasChoices("CHAVE_API_OLHO_VIVO", "OLHOVIVO_TOKEN", "olhovivo_token"),
+    )
     olhovivo_base_url: str = "https://api.olhovivo.sptrans.com.br/v2.1"
     collection_interval_seconds: int = Field(default=30, ge=15, le=60)
     collection_timeout_seconds: float = Field(default=5, gt=0, le=30)

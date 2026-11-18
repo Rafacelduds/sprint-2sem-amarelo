@@ -4,6 +4,7 @@ from alembic import context
 from api.collection import models  # noqa: F401 — registra tabelas no metadata
 from api.config import get_settings
 from api.db.base import Base
+from api.storage import models as storage_models  # noqa: F401
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config

@@ -1,7 +1,7 @@
 # Armazenamento imutável e proveniência
 
-Este documento define o contrato inicial da US12. Ele orienta a futura coleta e o
-processamento sem definir como o coletor será implementado.
+Contrato implementado da [US12](https://trello.com/c/tHXI3rYq), integrado à inbox
+do coletor US01/US29. A aplicação ainda não publica indicadores de negócio.
 
 ## Princípios
 
@@ -19,18 +19,22 @@ processamento sem definir como o coletor será implementado.
 O bucket configurado por `S3_BUCKET` usa os seguintes prefixos:
 
 ```text
-raw/<fonte>/<data-de-captura>/<identificador-da-captura>.<extensao>
+raw/olho-vivo/posicao/<data-UTC>/<snapshot-id>.json.gz
+raw/olho-vivo/garagem/<empresa>/<data-UTC>/<snapshot-id>.json.gz
+raw/received/<dataset>/<sha256>/<nome-do-arquivo>
 derived/<conjunto>/<versao-da-regra>/<versao-do-codigo>/<identificador>.<extensao>
 manifests/<processamento>/<identificador-da-execucao>.json
 ```
 
 - `fonte` identifica o sistema de origem, como `olho-vivo`, `gtfs` ou `programacao`;
-- `data-de-captura` usa `AAAA-MM-DD` no fuso aplicável à fonte;
+- a partição de captura usa `AAAA-MM-DD` em UTC;
 - o identificador da captura precisa ser único e estável;
 - versões são explícitas e imutáveis. Não usar `latest` em chaves persistidas.
 
-O prefixo `raw/` contém somente a representação recebida da fonte. Conversões de
-formato, correções de tipo, deduplicação e particionamento pertencem a `derived/`.
+Respostas JSON são comprimidas com gzip determinístico, sem nova serialização.
+Descompactar recupera exatamente os bytes recebidos, inclusive campos não modelados.
+Parquets históricos são preservados como recebidos. A data de importação no catálogo
+não é apresentada como horário de captura desconhecido. Normalização fica em `derived/`.
 
 ## Gravação de dados brutos
 
@@ -38,11 +42,16 @@ A operação de escrita deve ter semântica de criação:
 
 1. calcular SHA-256 sobre os bytes antes do envio;
 2. gravar o objeto somente se a chave ainda não existir;
-3. recusar a operação se a chave já existir, mesmo quando o conteúdo for igual;
+3. recusar nova criação se a chave já existir, mesmo quando o conteúdo for igual;
 4. retornar a chave, o tamanho e o SHA-256 efetivamente armazenados;
 5. nunca apagar ou substituir automaticamente um objeto para resolver uma colisão.
 
-Cada objeto bruto deve carregar, como metadados ou em um registro de catálogo:
+O S3 executa a condição atomicamente com `If-None-Match: *`; não se usa HEAD seguido
+de PUT como proteção. Em retomadas, o arquivador reconhece um upload anterior apenas
+após conferir conteúdo e metadados. Divergência é erro e não é reparada por sobrescrita.
+
+O catálogo `raw_objects` registra tamanho, hashes original e armazenado, encoding,
+versão do objeto e vínculo à inbox. Cada objeto bruto carrega metadados de origem:
 
 | Campo | Significado |
 | --- | --- |
@@ -66,9 +75,10 @@ Cada execução que produz dados derivados deve gerar um manifesto imutável com
 - URI e SHA-256 de cada saída;
 - instantes de início e término e resultado da execução.
 
-O PostgreSQL pode indexar essas informações para consulta, mas o manifesto continua
-sendo a referência autocontida do processamento. A estrutura persistida será criada
-na task de proveniência da US12.
+`ProcessingManifest` valida versões e referências; `ArchiveService.record` verifica
+os arquivos, grava o manifesto imutável e persiste a execução em `processing_runs`.
+O manifesto é autocontido; o banco oferece a indexação. Código usa commit Git completo,
+não nome de branch. Publicação de indicadores deve chamar essa interface.
 
 ## Reprocessamento
 
@@ -82,8 +92,35 @@ registra suas próprias versões e saídas, sem substituir a execução anterior
 
 ## Limites desta história
 
-- A implementação do coletor e sua política de agendamento serão definidas pelo
-  Kayan.
+- A coleta é a implementação do Kayan. O arquivador consome sua inbox em lotes de dez;
+  falha no S3 conserva a pendência no banco. O modo contínuo consulta a cada cinco
+  segundos e usa advisory lock para impedir execução duplicada.
 - Backup e restauração pertencem à US32.
 - Publicação dos brutos para download pertence à US09.
 - Recálculo automático quando chega dado atrasado ou muda uma regra pertence à US20.
+
+## Operação e evidência
+
+Comandos na raiz, depois das migrações. Para executar Python pelo host, configure
+os hosts locais em `apps/api/.env`, conforme o README. Em AWS omita endpoint e
+chaves explícitas para usar a identidade IAM do processo.
+
+```bash
+uv run --package amarelo-api python -m api.storage init
+uv run --package amarelo-api python -m api.storage archive
+uv run --package amarelo-api python -m api.storage archive --watch
+uv run --package amarelo-api python -m api.storage import-history --path /caminho/dos/parquets --dataset gps-maio-2026
+uv run --package amarelo-api python -m api.storage inventory --dataset gps-maio-2026 --code-version COMMIT_COMPLETO --period-start 2026-05-01T00:00:00+00:00 --period-end 2026-06-01T00:00:00+00:00
+uv run --package amarelo-api python -m api.storage replay-inventory --manifest-key manifests/UUID.json
+uv run --package amarelo-api python -m api.storage record-manifest --path manifesto.json
+docker compose --env-file apps/api/.env --env-file apps/web/.env --profile arquivo up -d --build archiver
+```
+
+`inventory` e `replay-inventory` demonstram uma transformação técnica determinística
+de hashes e tamanhos. Não calculam indicadores nem comprovam equivalência de um
+indicador publicado. Para esse aceite da US12, integrar o processamento de negócio
+e comparar seus valores com as versões e entradas registradas.
+
+Testes de integração exigem `TEST_DATABASE_URL` e `TEST_S3_ENDPOINT_URL` de testes.
+Usam schemas e buckets com nomes aleatórios; a CI fornece ambos os serviços.
+Os arquivos completos e as capturas permanecem fora do Git.
