@@ -18,6 +18,7 @@ class CollectionSettings(BaseSettings):
     collection_interval_seconds: int = Field(default=30, ge=15, le=60)
     collection_timeout_seconds: float = Field(default=5, gt=0, le=30)
     collection_company_codes: list[int] | None = None
+    gtfs_source_id: str = "sptrans"
     database_url: SecretStr = SecretStr(
         "postgresql+asyncpg://amarelo:amarelo@localhost:5432/amarelo"
     )

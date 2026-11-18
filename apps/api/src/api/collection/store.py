@@ -1,6 +1,7 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import update
 from sqlalchemy.dialects.postgresql import insert
@@ -8,11 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from api.collection.models import CollectionCycle, CollectionSnapshot, VehiclePosition
 from api.collection.source import Snapshot
+from api.gtfs.catalog import resolve_version
 
 
 class PostgresStore:
-    def __init__(self, sessions: async_sessionmaker[AsyncSession]):
+    def __init__(self, sessions: async_sessionmaker[AsyncSession], gtfs_source_id: str = "sptrans"):
         self.sessions = sessions
+        self.gtfs_source_id = gtfs_source_id
 
     async def start(self, scheduled_at: datetime) -> UUID:
         cycle_id = uuid4()
@@ -41,6 +44,25 @@ class PostgresStore:
                     )
                 )
         async with self.sessions.begin() as session:
+            versions: dict[date, str | None] = {}
+            for row in rows:
+                gps_at: datetime | None = row["gps_at"]
+                if gps_at is None:
+                    row.update(gtfs_version_sha256=None, gtfs_link_status="missing_gps_time")
+                    continue
+                day = gps_at.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+                if day not in versions:
+                    versions[day] = await resolve_version(
+                        session,
+                        day,
+                        snapshot.collected_at,
+                        source_id=self.gtfs_source_id,
+                    )
+                version = versions[day]
+                row.update(
+                    gtfs_version_sha256=version,
+                    gtfs_link_status="matched" if version else "no_gtfs_for_date",
+                )
             session.add(
                 CollectionSnapshot(
                     id=snapshot_id,

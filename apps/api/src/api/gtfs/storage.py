@@ -35,7 +35,7 @@ class S3Archive:
                 IfNoneMatch="*",
             )
         except ClientError as exc:
-            if exc.response["Error"].get("Code") not in {"PreconditionFailed", "412"}:
+            if exc.response.get("Error", {}).get("Code") not in {"PreconditionFailed", "412"}:
                 raise GtfsError("archive_write_failed") from None
             existing = self.client.head_object(Bucket=self.bucket, Key=key)
             if (

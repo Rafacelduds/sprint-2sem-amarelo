@@ -26,7 +26,9 @@ async def main() -> None:
             base_url=settings.olhovivo_base_url + "/", timeout=settings.collection_timeout_seconds
         ) as client:
             source = OlhoVivo(client, settings.olhovivo_token.get_secret_value())
-            store = PostgresStore(async_sessionmaker(engine, expire_on_commit=False))
+            store = PostgresStore(
+                async_sessionmaker(engine, expire_on_commit=False), settings.gtfs_source_id
+            )
             collector = Collector(source, store, settings)
             success = await collector.run(once=args.once)
             if not success:

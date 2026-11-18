@@ -24,7 +24,7 @@ def feed_bytes(*, version: str = "one", calendar_only: bool = False) -> bytes:
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for name, body in tables.items():
-            archive.writestr(name, body)
+            archive.writestr(zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0)), body)
     return output.getvalue()
 
 

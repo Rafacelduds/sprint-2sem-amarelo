@@ -81,7 +81,7 @@ def inspect_feed(path: Path, *, max_expanded_bytes: int = 4_294_967_296) -> Feed
                     archive.open("feed_info.txt") as member,
                     io.TextIOWrapper(member, encoding="utf-8-sig", newline="") as stream,
                 ):
-                    info = next(csv.DictReader(stream), {})
+                    info = next(csv.DictReader(stream), dict[str, str]())
                     publisher_version = info.get("feed_version") or None
                     if info.get("feed_start_date") and info.get("feed_end_date"):
                         starts.append(_date(info["feed_start_date"]))
@@ -128,6 +128,9 @@ async def download(
     max_bytes: int = 268_435_456,
     attempts: int = 3,
 ) -> None:
+    if attempts < 1:
+        raise ValueError("attempts must be positive")
+    error = "source_transport_error"
     for attempt in range(attempts):
         try:
             async with client.stream(
