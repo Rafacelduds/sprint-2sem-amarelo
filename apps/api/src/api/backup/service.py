@@ -192,7 +192,8 @@ async def restore(
         )
         if tables:
             raise ValueError("banco de destino não está vazio")
-    if target.client.list_objects_v2(Bucket=target.bucket, MaxKeys=1).get("KeyCount", 0):
+    history = target.client.list_object_versions(Bucket=target.bucket, MaxKeys=1)
+    if history.get("Versions") or history.get("DeleteMarkers"):
         raise ValueError("bucket de destino não está vazio")
     started = datetime.now(UTC)
     with TemporaryDirectory(prefix="amarelo-restore-") as temporary:

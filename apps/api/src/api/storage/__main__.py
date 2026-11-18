@@ -71,6 +71,7 @@ async def main() -> None:
             if args.command == "archive":
                 while True:
                     await guard.execute(text("SELECT 1"))
+                    await guard.commit()
                     try:
                         count = await service.archive_pending()
                         logger.info("archive_batch count=%s", count)

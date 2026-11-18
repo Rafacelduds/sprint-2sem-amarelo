@@ -91,6 +91,10 @@ originais às novas versões físicas, permitindo abrir os manifestos originais
 sem reescrevê-los. Preserve esse mapa na configuração recuperada; pode ser
 reconstruído repetindo o ensaio em outro destino vazio.
 
+O Compose monta o arquivo indicado por `S3_RESTORE_MAP` como configuração somente
+de leitura na API, arquivador e job de backup. Sem restauração, usa o mapa vazio
+versionado em `infra/storage/`. Use caminho absoluto no arquivo de ambiente do host.
+
 O dump recupera o estado consistente de seu início; capturas posteriores ficam
 fora daquele ponto. Algumas respostas no dump podem reaparecer com corpo, pois a
 limpeza da inbox ocorre depois dele. Isso é esperado e não duplica posições.
@@ -119,3 +123,8 @@ A CI fornece PostgreSQL, os dois S3 locais e clientes PostgreSQL 16.
 O primeiro ensaio e seu tempo são evidência para o volume testado. Agende uma nova
 restauração em até seis meses e depois a cada seis meses; a existência do comando
 não comprova que o teste periódico foi realizado nem disponibilidade em nuvem.
+
+Primeiro ensaio executado em 18/11/2026:
+[resultado e limites](evidencias/2026-11-18-us12-us32.md).
+Próximo teste periódico previsto até 18/05/2027, a ser incorporado à operação;
+nenhuma automação externa ou evento de calendário foi criado.

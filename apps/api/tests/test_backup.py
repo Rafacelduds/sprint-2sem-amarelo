@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 from api.backup.__main__ import backup_due
-from api.backup.models import BackupReceipt, BackupRun
+from api.backup.models import BackupReceipt, BackupRun, RecoveryManifest
 from api.backup.service import BackupService, restore
 from api.collection.models import CollectionSnapshot, VehiclePosition
 from api.collection.store import PostgresStore
@@ -208,6 +208,55 @@ async def test_retention_keeps_seven_recovery_points_and_all_raw(
             )
     finally:
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_missing_backup_object_blocks_restore_without_loading_database(
+    databases: tuple[str, str],
+    archive: S3Archive,
+    secondary: S3Archive,
+    tmp_path: Path,
+) -> None:
+    source_engine = create_async_engine(databases[0])
+    target_engine = create_async_engine(databases[1])
+    sessions = async_sessionmaker(source_engine, expire_on_commit=False)
+    target = S3Archive(
+        "test-empty-" + uuid4().hex,
+        endpoint=os.environ["TEST_S3_ENDPOINT_URL"],
+        access_key="test",
+        secret_key="test",
+    )
+    target.initialize()
+    try:
+        path = tmp_path / "source"
+        path.write_bytes(b"source")
+        archive.put(path, "raw/missing-after-backup")
+        service = BackupService(sessions, archive, secondary, databases[0])
+        ref = await service.create("a" * 40)
+        manifest_path = tmp_path / "manifest"
+        secondary.download(ref, manifest_path)
+        manifest = RecoveryManifest.model_validate_json(manifest_path.read_bytes())
+        copied = manifest.objects[0].backup
+        secondary.client.delete_object(
+            Bucket=secondary.bucket, Key=copied.key, VersionId=copied.version_id
+        )
+        with pytest.raises(ClientError):
+            await restore(
+                secondary, ref, target, target_engine, databases[1], tmp_path / "restore-map"
+            )
+        async with target_engine.connect() as connection:
+            assert (
+                await connection.scalar(
+                    text(
+                        "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"
+                    )
+                )
+                == 0
+            )
+        assert not (tmp_path / "restore-map").exists()
+    finally:
+        await source_engine.dispose()
+        await target_engine.dispose()
 
 
 def test_schedule_catches_up_once_and_runs_at_0300_utc() -> None:

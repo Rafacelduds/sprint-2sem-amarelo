@@ -95,6 +95,7 @@ async def main() -> None:
         async with exclusive(engine, 710132) as guard:
             while True:
                 await guard.execute(text("SELECT 1"))
+                await guard.commit()
                 async with sessions() as session:
                     last = await session.scalar(select(func.max(BackupRun.completed_at)))
                 if args.command == "run" or backup_due(last, datetime.now(UTC)):
