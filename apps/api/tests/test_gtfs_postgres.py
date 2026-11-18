@@ -3,6 +3,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock
 
+import pytest
 from api.collection.models import CollectionCycle, CollectionSnapshot, VehiclePosition
 from api.collection.runner import Collector
 from api.collection.source import OlhoVivo, SourceError
@@ -82,9 +83,11 @@ async def test_latest_eligible_version_including_return_to_old_hash(
         assert hashes[0] == hashes[2] != hashes[1]
 
 
+@pytest.mark.parametrize("source_id", ["sptrans", "teste-us02"])
 async def test_positions_link_by_local_gps_date_and_keep_missing_explicit(
     sessions: async_sessionmaker[AsyncSession],
     tmp_path: Path,
+    source_id: str,
 ) -> None:
     path = tmp_path / "feed.zip"
     path.write_bytes(feed_bytes())
@@ -92,7 +95,7 @@ async def test_positions_link_by_local_gps_date_and_keep_missing_explicit(
     known = datetime(2026, 5, 17, tzinfo=UTC)
     await Catalog(sessions).record(
         metadata,
-        source_id="sptrans",
+        source_id=source_id,
         source_url="https://example.org/feed",
         captured_at=known,
         bucket="test",
@@ -102,7 +105,7 @@ async def test_positions_link_by_local_gps_date_and_keep_missing_explicit(
     snapshot.collected_at = datetime(2026, 5, 18, 2, tzinfo=UTC)
     # 18/05 UTC ainda é 17/05 em São Paulo.
     snapshot.positions.lines[0].vs[0].ta = snapshot.collected_at
-    store = PostgresStore(sessions)
+    store = PostgresStore(sessions, gtfs_source_id=source_id)
     cycle = await store.start(snapshot.collected_at)
     await store.save(cycle, snapshot)
     await store.save(cycle, make_snapshot(missing=True))

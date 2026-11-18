@@ -69,6 +69,9 @@ docker compose run --rm --no-deps --env-from-file .env -e PYTHONPATH=/workspace/
 
 Nesse container, mantenha `postgres`/`s3` como hosts. Não há serviço GTFS contínuo
 adicionado ao Compose; o comando acima é uma execução pontual.
+O serviço `collector` (Olho Vivo) recebe `GTFS_SOURCE_ID` pelo ambiente do Compose,
+com padrão `sptrans`. Ao adotar outra fonte como referência para posições, use o
+mesmo identificador na captura GTFS e nesse serviço para que o vínculo seja encontrado.
 
 | Variável | Padrão e comportamento |
 | --- | --- |
