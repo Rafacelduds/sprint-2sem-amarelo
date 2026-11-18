@@ -3,8 +3,7 @@
 Contexto compartilhado, arquitetura, dados e fluxo de contribuição estão no
 [índice da documentação](docs/README.md). Para começar a desenvolver, siga o setup abaixo.
 
-Setup mínimo com uma API FastAPI e uma aplicação React/Vite que exibe o resultado
-de `GET /health`.
+API FastAPI e aplicação React/Vite com mapa público de posições dos ônibus (US22).
 
 ## Stack
 
@@ -34,7 +33,7 @@ Acesse:
 - endpoint S3 local: http://localhost:4566
 
 O Vite encaminha `/api/*` para a API e remove o prefixo `/api`. A tela inicial
-consulta `/api/health` e mostra o estado retornado.
+consulta `/api/vehicles/positions` e mostra as posições e a idade da coleta.
 
 Para encerrar os serviços, preservando os volumes:
 
@@ -159,6 +158,33 @@ o original. Identifique a procedência antes de usar esse acervo como programaç
 O arquivador da US12 preserva as respostas da inbox no S3 em JSON.gz imutável,
 sem bloquear a coleta quando o S3 fica indisponível. Comandos de arquivamento,
 importação histórica e proveniência estão no contrato de armazenamento acima.
+
+## Mapa ao vivo (US22)
+
+Configure `OLHO_VIVO_TOKEN` em `apps/api/.env` (modelo em `apps/api/.env.example`). O token nunca vai ao frontend. A API carrega `apps/api/.env` independentemente do diretório de execução; variáveis do processo têm precedência. O Compose injeta esse arquivo opcional e mantém os endereços internos de PostgreSQL/S3. Sem token, a tela informa indisponibilidade, sem dados fictícios.
+
+Execute API e frontend pelos comandos de desenvolvimento acima. O Vite usa a API local na porta 8000; no Compose, `API_PROXY_TARGET` aponta para `http://api:8000`. O mapa não precisa de banco/S3 para esta consulta.
+
+- `GET /vehicles/positions` é público. `line_id` opcional filtra um sentido pelo código interno SPTrans. `lines` mantém o catálogo disponível no snapshot.
+- A tela consulta a cada 15 segundos, mostra coleta e GPS separadamente e oculta veículos após 60 segundos sem coleta recente. GPS antigo ou sem horário fica cinza; não significa viagem cancelada.
+- O backend compartilha um snapshot em memória por processo, coalescendo chamadas concorrentes e esperando 15 segundos entre tentativas. Em falha mantém a data original; sem snapshot retorna 503.
+- Esta consulta direta é um adaptador para a US22; não implementa histórico, redundância ou persistência da US01. O coletor US01/US29 já existe em processo separado; conectá-lo a este endpoint é uma etapa posterior que deve preservar o contrato. Múltiplos workers exigem cache compartilhado antes de escalar.
+- A tela abre na visão geral da rede, com bolhas neutras de 24–32 px e contagem de veículos. Os agrupamentos espaciais (Supercluster) respeitam os filtros e se dividem conforme o zoom; clicar amplia a região. No zoom máximo, veículos coincidentes abrem uma lista paginada de dez itens. Filtros por área e seleção acumulativa de linhas permitem comparar ambos os sentidos ou restringir cada linha. O resumo considera os filtros dentro da área visível, enquanto o total da rede fica como referência. A câmera só é enquadrada a pedido do usuário.
+- Cores identificam áreas oficiais com correspondência comprovada; linhas sem área confirmada ficam em cinza. O catálogo versionado da US02 habilita os percursos das linhas selecionadas. O traçado tem 3 px e 40% de opacidade, com sentido 1 contínuo e 2 tracejado, abaixo dos veículos e sem interceptar cliques. Sem esse artefato, as posições continuam funcionando e a tela explica a dependência. Veja o [contrato de integração](docs/integracoes/rede-us02.md).
+- GPS recente significa até 60 segundos no relógio de referência da fonte; horário inválido, ausente ou futuro é desconhecido. O percentual usa todos os veículos do recorte como denominador. O índice espacial é reconstruído apenas quando as posições ou os filtros mudam; movimentos e zoom consultam o mesmo índice. Marcadores são reutilizados, popups são criados ao clicar e a lista só é montada quando aberta, em páginas de 100 veículos.
+- Leaflet usa os tiles padrão do OpenStreetMap com atribuição visível. O mapa de ruas depende de rede; a lista de posições permanece disponível. Antes de publicar em escala, definir provedor compatível com a política de uso de tiles.
+
+Contrato gerado em OpenAPI e cliente TypeScript conforme os comandos acima. Origem do formato: [documentação SPTrans v2.1](https://www.sptrans.com.br/desenvolvedores/api-do-olho-vivo-guia-de-referencia/documentacao-api/), consultada em 18/11/2026.
+
+### Simulação local da fonte
+
+A fixture em `postman/mocks/olho-vivo` usa dois veículos sintéticos e valida o cookie entre login e posições. Não deve ser apresentada como operação real.
+
+```bash
+postman simulation run postman/simulations/live-map.sim.yaml --port 4010 --no-history
+```
+
+Para executar a API contra ela, defina no processo `OLHO_VIVO_BASE_URL=http://127.0.0.1:4010/olho-vivo/v2.1` e `OLHO_VIVO_TOKEN=synthetic`. Não use o token real na simulação.
 
 Backup diário, retenção dos sete dumps mais recentes, limpeza segura da inbox e
 recuperação em destinos vazios: [backup e restauração](docs/backup-e-restauracao.md).

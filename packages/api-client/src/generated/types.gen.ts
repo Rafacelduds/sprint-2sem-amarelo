@@ -5,6 +5,80 @@ export type ClientOptions = {
 };
 
 /**
+ * Area
+ */
+export type Area = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Color
+     */
+    color: string;
+};
+
+/**
+ * CatalogLine
+ */
+export type CatalogLine = {
+    /**
+     * Line Id
+     */
+    line_id: number;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Direction
+     */
+    direction: number;
+    /**
+     * Destination
+     */
+    destination: string;
+    /**
+     * Route Id
+     */
+    route_id: string;
+    /**
+     * Direction Id
+     */
+    direction_id: string;
+    /**
+     * Area Id
+     */
+    area_id?: number | null;
+    /**
+     * Area Source
+     */
+    area_source?: string | null;
+    /**
+     * Match Source
+     */
+    match_source: string;
+    /**
+     * Color
+     */
+    color?: string | null;
+};
+
+/**
+ * HTTPValidationError
+ */
+export type HttpValidationError = {
+    /**
+     * Detail
+     */
+    detail?: Array<ValidationError>;
+};
+
+/**
  * HealthResponse
  */
 export type HealthResponse = {
@@ -16,6 +90,263 @@ export type HealthResponse = {
      * Service
      */
     service: string;
+};
+
+/**
+ * Line
+ */
+export type Line = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Direction
+     */
+    direction: number;
+    /**
+     * Destination
+     */
+    destination: string;
+};
+
+/**
+ * NetworkCatalog
+ */
+export type NetworkCatalog = {
+    /**
+     * Status
+     */
+    status: 'ready' | 'unavailable';
+    /**
+     * Version
+     */
+    version?: string | null;
+    /**
+     * Captured At
+     */
+    captured_at?: string | null;
+    /**
+     * Source
+     */
+    source?: string | null;
+    /**
+     * Synthetic
+     */
+    synthetic?: boolean;
+    /**
+     * Areas
+     */
+    areas: Array<Area>;
+    /**
+     * Lines
+     */
+    lines: Array<CatalogLine>;
+};
+
+/**
+ * NetworkLine
+ */
+export type NetworkLine = {
+    /**
+     * Line Id
+     */
+    line_id: number;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Direction
+     */
+    direction: number;
+    /**
+     * Destination
+     */
+    destination: string;
+    /**
+     * Route Id
+     */
+    route_id: string;
+    /**
+     * Direction Id
+     */
+    direction_id: string;
+    /**
+     * Area Id
+     */
+    area_id?: number | null;
+    /**
+     * Area Source
+     */
+    area_source?: string | null;
+    /**
+     * Match Source
+     */
+    match_source: string;
+};
+
+/**
+ * RouteCollection
+ */
+export type RouteCollection = {
+    /**
+     * Type
+     */
+    type?: 'FeatureCollection';
+    /**
+     * Version
+     */
+    version: string;
+    /**
+     * Captured At
+     */
+    captured_at: string;
+    /**
+     * Synthetic
+     */
+    synthetic: boolean;
+    /**
+     * Features
+     */
+    features: Array<RouteFeature>;
+};
+
+/**
+ * RouteFeature
+ */
+export type RouteFeature = {
+    /**
+     * Type
+     */
+    type?: 'Feature';
+    geometry: RouteGeometry;
+    properties: NetworkLine;
+};
+
+/**
+ * RouteGeometry
+ */
+export type RouteGeometry = {
+    /**
+     * Type
+     */
+    type?: 'MultiLineString';
+    /**
+     * Coordinates
+     */
+    coordinates: Array<Array<[
+        number,
+        number
+    ]>>;
+};
+
+/**
+ * Snapshot
+ */
+export type Snapshot = {
+    /**
+     * Collected At
+     */
+    collected_at: string;
+    /**
+     * Served At
+     */
+    served_at: string;
+    /**
+     * Source
+     */
+    source?: 'SPTrans / Olho Vivo';
+    /**
+     * Stale
+     */
+    stale?: boolean;
+    /**
+     * Vehicles
+     */
+    vehicles: Array<Vehicle>;
+    /**
+     * Lines
+     */
+    lines: Array<Line>;
+    /**
+     * Discarded
+     */
+    discarded?: number;
+};
+
+/**
+ * ValidationError
+ */
+export type ValidationError = {
+    /**
+     * Location
+     */
+    loc: Array<string | number>;
+    /**
+     * Message
+     */
+    msg: string;
+    /**
+     * Error Type
+     */
+    type: string;
+    /**
+     * Input
+     */
+    input?: unknown;
+    /**
+     * Context
+     */
+    ctx?: {
+        [key: string]: unknown;
+    };
+};
+
+/**
+ * Vehicle
+ */
+export type Vehicle = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Line Id
+     */
+    line_id: number;
+    /**
+     * Line
+     */
+    line: string;
+    /**
+     * Direction
+     */
+    direction: number;
+    /**
+     * Destination
+     */
+    destination: string;
+    /**
+     * Latitude
+     */
+    latitude: number;
+    /**
+     * Longitude
+     */
+    longitude: number;
+    /**
+     * Gps At
+     */
+    gps_at: string | null;
+    /**
+     * Accessible
+     */
+    accessible: boolean | null;
 };
 
 export type HealthHealthGetData = {
@@ -33,3 +364,92 @@ export type HealthHealthGetResponses = {
 };
 
 export type HealthHealthGetResponse = HealthHealthGetResponses[keyof HealthHealthGetResponses];
+
+export type PositionsVehiclesPositionsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Line Id
+         */
+        line_id?: number | null;
+    };
+    url: '/vehicles/positions';
+};
+
+export type PositionsVehiclesPositionsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Fonte indisponível e sem snapshot anterior
+     */
+    503: unknown;
+};
+
+export type PositionsVehiclesPositionsGetError = PositionsVehiclesPositionsGetErrors[keyof PositionsVehiclesPositionsGetErrors];
+
+export type PositionsVehiclesPositionsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: Snapshot;
+};
+
+export type PositionsVehiclesPositionsGetResponse = PositionsVehiclesPositionsGetResponses[keyof PositionsVehiclesPositionsGetResponses];
+
+export type CatalogNetworkCatalogGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/network/catalog';
+};
+
+export type CatalogNetworkCatalogGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: NetworkCatalog;
+};
+
+export type CatalogNetworkCatalogGetResponse = CatalogNetworkCatalogGetResponses[keyof CatalogNetworkCatalogGetResponses];
+
+export type RouteNetworkRoutesLineIdGetData = {
+    body?: never;
+    path: {
+        /**
+         * Line Id
+         */
+        line_id: number;
+    };
+    query?: {
+        /**
+         * Version
+         */
+        version?: string | null;
+    };
+    url: '/network/routes/{line_id}';
+};
+
+export type RouteNetworkRoutesLineIdGetErrors = {
+    /**
+     * Correspondência ou traçado indisponível
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RouteNetworkRoutesLineIdGetError = RouteNetworkRoutesLineIdGetErrors[keyof RouteNetworkRoutesLineIdGetErrors];
+
+export type RouteNetworkRoutesLineIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RouteCollection;
+};
+
+export type RouteNetworkRoutesLineIdGetResponse = RouteNetworkRoutesLineIdGetResponses[keyof RouteNetworkRoutesLineIdGetResponses];

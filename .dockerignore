@@ -14,3 +14,7 @@ data
 htmlcov
 coverage
 
+
+**/.env
+**/.env.*
+!**/.env.example

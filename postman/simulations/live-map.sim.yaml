@@ -1,0 +1,7 @@
+simulation: live-map
+routing: path
+mocks:
+  - name: olho-vivo
+    routeKey: olho-vivo
+    origin: api.olhovivo.sptrans.com.br
+    path: postman/mocks/olho-vivo

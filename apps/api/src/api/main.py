@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from api.config import get_settings
+from api.live import router as live_router
+from api.network import router as network_router
 
 
 class HealthResponse(BaseModel):
@@ -31,6 +33,8 @@ def create_app() -> FastAPI:
     async def health() -> HealthResponse:
         return HealthResponse(status="ok", service="api")
 
+    application.include_router(live_router)
+    application.include_router(network_router)
     return application
 
 

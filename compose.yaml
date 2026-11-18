@@ -88,6 +88,9 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    env_file:
+      - path: ./apps/api/.env
+        required: false
     environment:
       S3_RESTORE_MAP: /run/configs/storage-restore-map.json
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
@@ -161,6 +164,7 @@ services:
       dockerfile: apps/web/Dockerfile
     environment:
       VITE_API_URL: ${VITE_API_URL:-/api}
+      API_PROXY_TARGET: http://api:8000
     depends_on:
       api:
         condition: service_healthy

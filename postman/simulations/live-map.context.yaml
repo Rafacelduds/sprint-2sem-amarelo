@@ -1,0 +1,23 @@
+purpose:
+  stands_in_for: SPTrans Olho Vivo v2.1, apenas login e posições.
+  unblocks: Verificação HTTP do adaptador US22 sem dados reais.
+assumptions:
+  - id: authentication-cookie
+    status: supported
+    claim: O cliente preserva o cookie de sessão entre autenticação e posições.
+    reason: A simulação rejeita posições sem cookie; a sequência completou com dois veículos.
+    verification: Em 18/11/2026 o adaptador real chamou POST Login/Autenticar e GET Posicao, ambos 200, com token sintético. A consulta real também retornou posições no mesmo dia.
+    source: apps/api/src/api/live.py; postman/mocks/olho-vivo/default.js; documentação SPTrans v2.1
+    updated_at: '2026-11-18'
+  - id: upstream-availability
+    status: unknown
+    claim: O provedor disponibiliza posições recentes continuamente.
+    reason: Uma consulta bem-sucedida não demonstra disponibilidade contínua nem idade de todos os GPS.
+    verification: Consulta real em 18/11/2026 retornou 10303 veículos e 2085 linhas/sentidos. Testes locais cobrem falha, backoff e expiração; não comprovam SLA externo.
+    source: apps/api/tests/test_live.py; apps/web/src/App.test.tsx
+    updated_at: '2026-11-18'
+fingerprints:
+  - id: us22-local
+    date: '2026-11-18'
+    commit: 'Árvore local não commitada da branch us22-mapa-ao-vivo'
+    cli: '1.82.0'
