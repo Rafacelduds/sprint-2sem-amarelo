@@ -17,6 +17,12 @@ Uma execução gera `backups/database/<uuid>.dump` e
 versões, hashes, commit do código e revisão Alembic. O banco registra o ponto
 somente depois de verificar o manifesto no backup.
 
+As referências são identificadas pela tupla bucket, chave e versão. Depois de
+uma restauração, aliases originais e físicos continuam no manifesto seguinte,
+mesmo quando apontam para uma única cópia dos mesmos bytes. Os recibos de limpeza
+usam a identidade original do catálogo. Conteúdos divergentes sob a mesma chave
+interrompem o backup, em vez de produzir um ponto de recuperação ambíguo.
+
 O agendamento é diário às 03:00 UTC (00:00 em São Paulo nesta data).
 Ao iniciar, faz uma execução se não existir backup do período vencido. Falhas
 são registradas sem credenciais e tentadas novamente após cinco minutos.
@@ -90,6 +96,12 @@ O bucket deve ser preparado com versionamento antes. O mapa associa referências
 originais às novas versões físicas, permitindo abrir os manifestos originais
 sem reescrevê-los. Preserve esse mapa na configuração recuperada; pode ser
 reconstruído repetindo o ensaio em outro destino vazio.
+
+O diretório do mapa é criado e uma saída gravável é reservada exclusivamente antes
+de copiar objetos ou carregar o banco. O mapa é escrito e sincronizado em arquivo
+temporário no mesmo diretório antes do `pg_restore`, e publicado por substituição
+atômica após a conferência do banco. Em caso de falha, reserva e temporário são
+removidos; mapas já existentes nunca são substituídos.
 
 O Compose monta o arquivo indicado por `S3_RESTORE_MAP` como configuração somente
 de leitura na API, arquivador e job de backup. Sem restauração, usa o mapa vazio

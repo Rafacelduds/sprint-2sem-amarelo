@@ -1,9 +1,11 @@
 import asyncio
 import json
 import logging
+import os
 from datetime import UTC, datetime
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import IO
 from uuid import uuid4
 
 from sqlalchemy import select, text, update
@@ -46,14 +48,17 @@ class BackupService:
             )
             # Listagem após o snapshot do dump; tabelas do catálogo são append-only.
             refs: dict[str, ObjectRef] = {}
+            catalog_identities: set[str] = set()
             for prefix in ("raw/", "derived/", "manifests/"):
                 items = await asyncio.to_thread(list, self.primary.objects(prefix))
-                refs.update((ref.key, ref) for ref in items)
+                refs.update((S3Archive.identity(ref), ref) for ref in items)
             async with self.sessions() as session:
                 revision = await session.scalar(text("SELECT version_num FROM alembic_version"))
                 for raw in (await session.scalars(select(RawObject))).all():
                     ref = ObjectRef.model_validate(raw.reference)
-                    refs[ref.key] = ref
+                    identity = S3Archive.identity(ref)
+                    refs[identity] = ref
+                    catalog_identities.add(identity)
                 for run in (await session.scalars(select(ProcessingRun))).all():
                     manifest = ProcessingManifest.model_validate(run.manifest)
                     for ref in (
@@ -61,10 +66,19 @@ class BackupService:
                         + manifest.outputs
                         + [ObjectRef.model_validate(run.reference)]
                     ):
-                        refs[ref.key] = ref
+                        refs[S3Archive.identity(ref)] = ref
             entries: list[BackupEntry] = []
+            copies: dict[str, tuple[ObjectRef, ObjectRef]] = {}
             for ref in refs.values():
-                copied = await asyncio.to_thread(self.backup.replicate, self.primary, ref)
+                if previous := copies.get(ref.key):
+                    first, copied = previous
+                    if first.model_dump(exclude={"bucket", "version_id"}) != ref.model_dump(
+                        exclude={"bucket", "version_id"}
+                    ):
+                        raise ValueError("mesma chave com conteúdo ou metadados divergentes")
+                else:
+                    copied = await asyncio.to_thread(self.backup.replicate, self.primary, ref)
+                    copies[ref.key] = (ref, copied)
                 entries.append(BackupEntry(primary=ref, backup=copied))
             manifest = RecoveryManifest(
                 backup_id=backup_id,
@@ -94,6 +108,10 @@ class BackupService:
             )
             await session.flush()
             for entry in entries:
+                # O recibo de limpeza deve manter a identidade exata do catálogo,
+                # e não um alias físico encontrado em um processamento posterior.
+                if S3Archive.identity(entry.primary) not in catalog_identities:
+                    continue
                 values = dict(
                     key=entry.primary.key,
                     backup_id=backup_id,
@@ -183,6 +201,42 @@ async def restore(
         raise ValueError("destino de restauração deve ser separado")
     if map_path.exists():
         raise ValueError("mapa de restauração já existe")
+    map_path.parent.mkdir(parents=True, exist_ok=True)
+    # Reserva exclusiva antes de acessar os destinos. Nunca substituir um mapa prévio.
+    with map_path.open("x", encoding="utf-8"):
+        pass
+    staged: Path | None = None
+    published = False
+    try:
+        with NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=map_path.parent,
+            prefix=".restore-map-",
+            delete=False,
+        ) as output:
+            staged = Path(output.name)
+            result = await _restore_reserved(
+                backup, recovery_ref, target, target_engine, target_url, output.file
+            )
+        os.replace(staged, map_path)
+        published = True
+        return result
+    finally:
+        if staged is not None:
+            staged.unlink(missing_ok=True)
+        if not published:
+            map_path.unlink(missing_ok=True)
+
+
+async def _restore_reserved(
+    backup: S3Archive,
+    recovery_ref: ObjectRef,
+    target: S3Archive,
+    target_engine: AsyncEngine,
+    target_url: str,
+    map_output: IO[str],
+) -> dict[str, int | str]:
     async with target_engine.connect() as connection:
         tables = await connection.scalar(
             text(
@@ -203,20 +257,25 @@ async def restore(
         dump = Path(temporary) / "database.dump"
         await asyncio.to_thread(backup.download, manifest.database_dump, dump)
         relocated: dict[str, ObjectRef] = {}
+        copies: dict[str, ObjectRef] = {}
         for entry in manifest.objects:
-            copied = await asyncio.to_thread(target.replicate, backup, entry.backup)
+            identity = S3Archive.identity(entry.backup)
+            if identity not in copies:
+                copies[identity] = await asyncio.to_thread(target.replicate, backup, entry.backup)
+            copied = copies[identity]
             relocated[S3Archive.identity(entry.primary)] = copied
+        target.relocations = relocated
+        for entry in manifest.objects:
+            await asyncio.to_thread(target.verify, entry.primary)
+        # Materializar e sincronizar o mapa antes de modificar o banco.
+        json.dump({key: ref.model_dump(mode="json") for key, ref in relocated.items()}, map_output)
+        map_output.flush()
+        os.fsync(map_output.fileno())
         await asyncio.to_thread(postgres_tool, "pg_restore", target_url, dump)
         async with target_engine.connect() as connection:
             revision = await connection.scalar(text("SELECT version_num FROM alembic_version"))
             if revision != manifest.database_revision:
                 raise ValueError("revisão do banco restaurado diverge")
-        # O manifesto original continua intacto. O mapa resolve suas referências físicas.
-        with map_path.open("x", encoding="utf-8") as output:
-            json.dump({key: ref.model_dump(mode="json") for key, ref in relocated.items()}, output)
-        target.relocations = relocated
-        for entry in manifest.objects:
-            await asyncio.to_thread(target.verify, entry.primary)
     return {
         "backup_id": str(manifest.backup_id),
         "objects": len(manifest.objects),
