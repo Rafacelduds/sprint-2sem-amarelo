@@ -80,7 +80,7 @@ def collect(output: Path | None = None) -> dict[str, object]:
     lines = document.get("l", [])
     vehicle_count = sum(len(line.get("vs", [])) for line in lines)
 
-    destination = output or default_output(captured_at)
+    destination = (output or default_output(captured_at)).resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("xb") as raw_file:
         raw_file.write(payload)
@@ -90,7 +90,11 @@ def collect(output: Path | None = None) -> dict[str, object]:
     return {
         "captured_at": captured_at.isoformat(),
         "endpoint": "/Posicao",
-        "path": str(destination.relative_to(REPOSITORY_ROOT)),
+        "path": str(
+            destination.relative_to(REPOSITORY_ROOT)
+            if destination.is_relative_to(REPOSITORY_ROOT)
+            else destination
+        ),
         "bytes": len(payload),
         "sha256": hashlib.sha256(payload).hexdigest(),
         "reference_time": document.get("hr"),

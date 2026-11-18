@@ -3,6 +3,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import Mock
+from urllib.parse import quote
 from uuid import uuid4
 
 import pytest
@@ -177,3 +179,38 @@ def test_provenance_requires_versions_and_timezone() -> None:
                 "outputs": [],
             }
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name", ["gps maio.parquet", "gps ação %.parquet"])
+async def test_import_special_filename_and_resume(
+    archive: S3Archive,
+    sessions: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+    name: str,
+) -> None:
+    path = tmp_path / name
+    path.write_bytes(b"PAR1receivedPAR1")
+    service = ArchiveService(sessions, archive)
+    ref = await service.import_file(path, "history")
+    assert ref.key.endswith("/" + quote(name, safe=""))
+    async with sessions.begin() as session:
+        raw = await session.scalar(select(RawObject).where(RawObject.key == ref.key))
+        assert raw is not None
+        await session.delete(raw)
+    # Upload já existe, mas o catálogo precisa ser reconstruído.
+    assert await service.import_file(path, "history") == ref
+    assert await service.import_file(path, "history") == ref
+    archive.verify(ref)
+    assert path.read_bytes() == b"PAR1receivedPAR1"
+
+
+def test_invalid_key_is_rejected_before_upload(tmp_path: Path) -> None:
+    archive = S3Archive("test", access_key="test", secret_key="test")
+    client = Mock()
+    archive.client = client
+    path = tmp_path / "input"
+    path.write_bytes(b"received")
+    with pytest.raises(ValidationError):
+        archive.put(path, "invalid-prefix/name")
+    client.put_object.assert_not_called()
