@@ -30,6 +30,7 @@ class CollectionSettings(BaseSettings):
     collection_interval_seconds: int = Field(default=30, ge=15, le=60)
     collection_timeout_seconds: float = Field(default=5, gt=0, le=30)
     collection_company_codes: list[int] | None = None
+    gtfs_source_id: str = "sptrans"
     collection_max_retries: int = Field(default=5, ge=0, le=5)
     collection_cycle_budget_seconds: float = Field(default=50, gt=0, le=50)
     collection_alert_webhook: SecretStr | None = None

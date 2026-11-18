@@ -44,3 +44,5 @@ class VehiclePosition(Base):
     gps_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     in_garage: Mapped[bool]
+    gtfs_version_sha256: Mapped[str | None] = mapped_column(ForeignKey("gtfs_versions.sha256"))
+    gtfs_link_status: Mapped[str] = mapped_column(default="not_evaluated")

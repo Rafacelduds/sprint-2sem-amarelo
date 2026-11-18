@@ -17,6 +17,19 @@ Em 18/11/2026, a implementação de US01 propõe usar o PostgreSQL existente par
 
 Em 18/11/2026, a implementação de US29 propõe repetir apenas consultas pendentes, até cinco vezes, dentro de um orçamento de 50 segundos, preservando o que já foi gravado. Os ciclos persistidos identificam falhas, interrupções e o primeiro ciclo incompleto desde o último sucesso integral. O webhook marca entrega só após resposta 2xx; sua ausência não significa alerta entregue. Victor informou que o canal ainda não existe e pediu preparar um webhook configurável. O lock PostgreSQL evita duas instâncias ativas para o mesmo banco. **Status: implementação para revisão por outro dev; entrega real de alerta e metas operacionais pendentes.** Contrato em [coleta.md](coleta.md).
 
+## D004 — Versões GTFS e referência temporal (proposta)
+
+Em 18/11/2026, a implementação da [US02](https://trello.com/c/ueJSVg9W) propõe
+preservar cada ZIP por SHA-256 no S3 e registrar cada captura bem-sucedida no
+PostgreSQL, inclusive quando os bytes não mudam. O vínculo das posições usa a
+última captura conhecida na coleta cuja cobertura inclui o dia civil do GPS em
+São Paulo; a cobertura vinda dos calendários é marcada como inferida. Isso não
+certifica a vigência histórica nem substitui o futuro conceito de dia operacional.
+Ausências permanecem explícitas. Frequência diária preserva o critério original;
+opção semanal continua pendente do PO. **Status: proposta implementada para revisão;
+aprovação de outro dev e validação da política temporal pendentes.** O acervo de
+respostas Olho Vivo e seu contrato com US12 não são alterados. Detalhes em [gtfs.md](gtfs.md).
+
 ## Como registrar a próxima
 
 Use ID sequencial e título. Em poucos parágrafos, informe **data e status** (proposta, aprovada, rejeitada ou substituída), **problema**, **escolha e motivo**, **consequências** e **fonte/aprovação** (pessoa, US, PR ou documento). Mencione alternativas apenas quando explicarem uma escolha relevante. Se substituir uma decisão, preserve o registro anterior e vincule a nova.
