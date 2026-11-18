@@ -1,7 +1,7 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
@@ -35,6 +35,57 @@ def fake_store() -> AsyncMock:
     store.start.return_value = uuid4()
     store.outage.return_value = None
     return store
+
+
+@pytest.mark.asyncio
+async def test_company_discovery_failure_preserves_available_road_positions() -> None:
+    source, store, clock = AsyncMock(spec=OlhoVivo), fake_store(), FakeClock()
+    source.company_codes.side_effect = SourceError("companies_unavailable")
+    snapshot = make_snapshot()
+    source.snapshot.return_value = snapshot
+    collector = Collector(source, store, IsolatedSettings(collection_max_retries=5), clock=clock)
+    assert not await collector.cycle(clock.now())
+    source.snapshot.assert_awaited_once_with(None)
+    store.save.assert_awaited_once_with(store.start.return_value, snapshot)
+    assert source.company_codes.await_count == 6
+    store.finish.assert_awaited_once_with(
+        store.start.return_value, "origin_failure", "companies:companies_unavailable"
+    )
+
+
+@pytest.mark.asyncio
+async def test_company_discovery_recovers_without_repeating_persisted_road_positions() -> None:
+    source, store, clock = AsyncMock(spec=OlhoVivo), fake_store(), FakeClock()
+    source.company_codes.side_effect = [SourceError("unavailable"), [1]]
+    collector = Collector(source, store, IsolatedSettings(collection_max_retries=5), clock=clock)
+    assert await collector.cycle(clock.now())
+    assert [call.args for call in source.snapshot.await_args_list] == [(None,), (1,)]
+    assert store.save.await_count == 2
+
+
+@pytest.mark.parametrize("error", [RuntimeError("finish failed"), TimeoutError()])
+@pytest.mark.asyncio
+async def test_persistent_finish_failure_triggers_storage_alert_and_throttles(
+    error: Exception,
+) -> None:
+    source, store, clock = AsyncMock(spec=OlhoVivo), fake_store(), FakeClock()
+    source.company_codes.return_value = [1]
+    store.finish.side_effect = error
+    alert = AsyncMock(spec=WebhookAlert)
+    collector = Collector(source, store, IsolatedSettings(), clock=clock, alert=alert)
+    started = clock.now()
+    assert not await collector.cycle(clock.now())
+    clock.seconds = 599
+    assert not await collector.cycle(clock.now())
+    alert.send.assert_not_awaited()
+    clock.seconds = 601
+    assert not await collector.cycle(clock.now())
+    alert.send.assert_awaited_once_with(UUID(int=0), started)
+    assert not await collector.cycle(clock.now())
+    assert alert.send.await_count == 1
+    clock.seconds = 661
+    assert not await collector.cycle(clock.now())
+    assert alert.send.await_count == 2
 
 
 @pytest.mark.asyncio

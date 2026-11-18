@@ -88,15 +88,31 @@ class Collector:
         self.storage_down_since: datetime | None = None
 
     async def attempt(self, cycle_id: UUID, batch: Batch) -> bool:
+        queries = tuple(batch.pending)
         if not batch.discovered:
-            codes = self.settings.collection_company_codes
-            if codes is None:
-                codes = await self.source.company_codes()
-            if not codes:
-                raise SourceError("no_garages_configured")
+            # Operação independe da descoberta; persistir antes de consultar /Empresa.
+            await self.collect_positions(cycle_id, batch, queries)
+            try:
+                codes = self.settings.collection_company_codes
+                if codes is None:
+                    codes = await self.source.company_codes()
+                if not codes:
+                    raise SourceError("no_garages_configured")
+            except SourceError as exc:
+                batch.errors["companies"] = str(exc)
+                return False
             batch.pending.extend(sorted(set(codes)))
             batch.discovered = True
-        for code in tuple(batch.pending):
+            batch.errors.pop("companies", None)
+            # Não repetir a operação duas vezes na mesma tentativa se ela falhou.
+            queries = tuple(code for code in batch.pending if code is not None)
+        await self.collect_positions(cycle_id, batch, queries)
+        return batch.discovered and not batch.pending
+
+    async def collect_positions(
+        self, cycle_id: UUID, batch: Batch, queries: tuple[int | None, ...]
+    ) -> None:
+        for code in queries:
             batch.saving = False
             key = "road" if code is None else f"company_{code}"
             try:
@@ -109,7 +125,6 @@ class Collector:
             batch.saving = False
             batch.pending.remove(code)
             batch.errors.pop(key, None)
-        return not batch.pending
 
     async def cycle(self, scheduled_at: datetime) -> bool:
         try:
@@ -160,6 +175,7 @@ class Collector:
         except Exception:
             logger.error("collection_cycle_finish_failed id=%s", cycle_id)
             self.storage_down_since = self.storage_down_since or scheduled_at
+            await self.alert_storage_outage()
             return False
         logger.info("collection_cycle_finished id=%s status=%s code=%s", cycle_id, status, error)
         await self.notify_outage()
