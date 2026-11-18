@@ -1,0 +1,5 @@
+version: 1
+name: olho-vivo
+mockSrc: default.js
+origin: api.olhovivo.sptrans.com.br
+interceptRequests: true

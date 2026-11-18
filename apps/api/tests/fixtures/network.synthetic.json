@@ -1,0 +1,95 @@
+{
+  "version": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "captured_at": "2026-11-18T12:00:00Z",
+  "source": "Fixture sintética de teste. Nenhuma geometria real.",
+  "synthetic": true,
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "line_id": 1,
+        "label": "5015-10",
+        "direction": 1,
+        "destination": "Terminal A",
+        "route_id": "synthetic-5015-10",
+        "direction_id": "1",
+        "area_id": 2,
+        "area_source": "FIXTURE SINTÉTICA — não é associação real",
+        "match_source": "Correspondência sintética explícita para testes; direction_id deliberadamente diferente de sl"
+      },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [
+              -46.65,
+              -23.54
+            ],
+            [
+              -46.63,
+              -23.55
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "line_id": 11,
+        "label": "5015-10",
+        "direction": 2,
+        "destination": "Terminal B",
+        "route_id": "synthetic-5015-10",
+        "direction_id": "0",
+        "area_id": 2,
+        "area_source": "FIXTURE SINTÉTICA — não é associação real",
+        "match_source": "Correspondência sintética explícita para testes; direction_id deliberadamente diferente de sl"
+      },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [
+              -46.63,
+              -23.55
+            ],
+            [
+              -46.65,
+              -23.54
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "line_id": 2,
+        "label": "701A-10",
+        "direction": 1,
+        "destination": "Terminal C",
+        "route_id": "synthetic-701A-10",
+        "direction_id": "1",
+        "area_id": 8,
+        "area_source": "FIXTURE SINTÉTICA — não é associação real",
+        "match_source": "Correspondência sintética explícita para testes; direction_id deliberadamente diferente de sl"
+      },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [
+              -46.66,
+              -23.56
+            ],
+            [
+              -46.64,
+              -23.54
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

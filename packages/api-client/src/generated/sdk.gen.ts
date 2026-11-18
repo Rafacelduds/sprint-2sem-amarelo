@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { HealthHealthGetData, HealthHealthGetResponses } from './types.gen';
+import type { CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -24,6 +24,38 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 export const healthHealthGet = <ThrowOnError extends boolean = false>(options?: Options<HealthHealthGetData, ThrowOnError>) => {
     return (options?.client ?? client).get<HealthHealthGetResponses, unknown, ThrowOnError>({
         url: '/health',
+        ...options
+    });
+};
+
+/**
+ * Positions
+ *
+ * Snapshot público; collected_at é a coleta, gps_at é a emissão do GPS. Snapshot com mais de 60 segundos é marcado stale e não deve ser exibido como ao vivo.
+ */
+export const positionsVehiclesPositionsGet = <ThrowOnError extends boolean = false>(options?: Options<PositionsVehiclesPositionsGetData, ThrowOnError>) => {
+    return (options?.client ?? client).get<PositionsVehiclesPositionsGetResponses, PositionsVehiclesPositionsGetErrors, ThrowOnError>({
+        url: '/vehicles/positions',
+        ...options
+    });
+};
+
+/**
+ * Catalog
+ */
+export const catalogNetworkCatalogGet = <ThrowOnError extends boolean = false>(options?: Options<CatalogNetworkCatalogGetData, ThrowOnError>) => {
+    return (options?.client ?? client).get<CatalogNetworkCatalogGetResponses, unknown, ThrowOnError>({
+        url: '/network/catalog',
+        ...options
+    });
+};
+
+/**
+ * Route
+ */
+export const routeNetworkRoutesLineIdGet = <ThrowOnError extends boolean = false>(options: Options<RouteNetworkRoutesLineIdGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<RouteNetworkRoutesLineIdGetResponses, RouteNetworkRoutesLineIdGetErrors, ThrowOnError>({
+        url: '/network/routes/{line_id}',
         ...options
     });
 };

@@ -40,6 +40,9 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    env_file:
+      - path: ./apps/api/.env
+        required: false
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
@@ -61,6 +64,7 @@ services:
       dockerfile: apps/web/Dockerfile
     environment:
       VITE_API_URL: ${VITE_API_URL:-/api}
+      API_PROXY_TARGET: http://api:8000
     depends_on:
       api:
         condition: service_healthy
