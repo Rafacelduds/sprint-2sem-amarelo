@@ -6,7 +6,6 @@ ENV UV_LINK_MODE=copy \
 
 COPY pyproject.toml uv.lock ./
 COPY apps/api/pyproject.toml apps/api/pyproject.toml
-COPY apps/collector/pyproject.toml apps/collector/pyproject.toml
 RUN uv sync --frozen --package amarelo-api --no-dev
 
 COPY apps/api apps/api
