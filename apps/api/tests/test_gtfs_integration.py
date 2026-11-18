@@ -3,6 +3,7 @@
 import os
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from threading import Thread
 from uuid import uuid4
 
@@ -58,6 +59,7 @@ def http_feed() -> Iterator[tuple[str, list[str]]]:
 async def test_real_http_s3_postgres_idempotency(
     sessions: async_sessionmaker[AsyncSession],
     http_feed: tuple[str, list[str]],
+    tmp_path: Path,
 ) -> None:
     endpoint = os.getenv("TEST_S3_ENDPOINT_URL")
     if not endpoint:
@@ -84,10 +86,22 @@ async def test_real_http_s3_postgres_idempotency(
             collector = GtfsCollector(client, S3Archive(s3, bucket), Catalog(sessions), settings)
             assert await collector.run(once=True)
             assert await collector.run(once=True)
+            local = tmp_path / "feed.zip"
+            local.write_bytes(feed_bytes())
+            assert await collector.import_file(local)
+            assert local.read_bytes() == feed_bytes()
         assert calls == ["/feed.zip"] * 3  # 503, tentativa bem-sucedida e nova verificação.
         async with sessions() as session:
             assert await session.scalar(select(func.count()).select_from(GtfsVersion)) == 1
-            assert await session.scalar(select(func.count()).select_from(GtfsCapture)) == 2
+            assert await session.scalar(select(func.count()).select_from(GtfsCapture)) == 3
+            assert (
+                await session.scalar(
+                    select(func.count())
+                    .select_from(GtfsCapture)
+                    .where(GtfsCapture.source_url == "file://imported/feed.zip")
+                )
+                == 1
+            )
             version = await session.scalar(select(GtfsVersion))
             assert version is not None
             response = s3.get_object(Bucket=bucket, Key=version.object_key)

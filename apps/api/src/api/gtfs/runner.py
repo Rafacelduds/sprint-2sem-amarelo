@@ -3,13 +3,14 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from urllib.parse import quote
 
 import httpx
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from api.gtfs.catalog import Catalog
-from api.gtfs.source import GtfsError, download, inspect_feed
+from api.gtfs.source import GtfsError, copy_local, download, inspect_feed
 from api.gtfs.storage import Archive
 
 logger = logging.getLogger(__name__)
@@ -59,27 +60,7 @@ class GtfsCollector:
                     max_bytes=self.settings.gtfs_max_bytes,
                     attempts=self.settings.gtfs_attempts,
                 )
-                metadata = await asyncio.to_thread(
-                    inspect_feed,
-                    path,
-                    max_expanded_bytes=self.settings.gtfs_max_expanded_bytes,
-                )
-                key = await asyncio.to_thread(
-                    self.archive.preserve,
-                    path,
-                    self.settings.gtfs_source_id,
-                    metadata,
-                )
-                # Só publicar uma captura depois de o objeto estar preservado.
-                await self.catalog.record(
-                    metadata,
-                    source_id=self.settings.gtfs_source_id,
-                    source_url=self.settings.gtfs_source_url.get_secret_value(),
-                    captured_at=datetime.now(UTC),
-                    bucket=self.settings.s3_bucket,
-                    key=key,
-                )
-            logger.info("gtfs_capture_success sha256=%s", metadata.sha256)
+                await self.publish(path, self.settings.gtfs_source_url.get_secret_value())
             return True
         except GtfsError as exc:
             logger.warning("gtfs_cycle_failed code=%s", str(exc))
@@ -87,6 +68,48 @@ class GtfsCollector:
             # Bibliotecas podem incluir credenciais/URLs/SQL nos erros; não propagá-los.
             logger.error("gtfs_cycle_failed code=storage_or_configuration_failure")
         return False
+
+    async def import_file(self, source: Path) -> bool:
+        try:
+            with TemporaryDirectory(prefix="amarelo-gtfs-") as directory:
+                path = Path(directory) / "feed.zip"
+                await asyncio.to_thread(
+                    copy_local,
+                    source,
+                    path,
+                    max_bytes=self.settings.gtfs_max_bytes,
+                )
+                # Registra o nome recebido, sem expor diretórios pessoais ou inferir sua origem.
+                await self.publish(path, "file://imported/" + quote(source.name))
+            return True
+        except GtfsError as exc:
+            logger.warning("gtfs_import_failed code=%s", str(exc))
+        except Exception:
+            logger.error("gtfs_import_failed code=storage_or_configuration_failure")
+        return False
+
+    async def publish(self, path: Path, source_url: str) -> None:
+        metadata = await asyncio.to_thread(
+            inspect_feed,
+            path,
+            max_expanded_bytes=self.settings.gtfs_max_expanded_bytes,
+        )
+        key = await asyncio.to_thread(
+            self.archive.preserve,
+            path,
+            self.settings.gtfs_source_id,
+            metadata,
+        )
+        # Só publicar uma captura depois de o objeto estar preservado.
+        await self.catalog.record(
+            metadata,
+            source_id=self.settings.gtfs_source_id,
+            source_url=source_url,
+            captured_at=datetime.now(UTC),
+            bucket=self.settings.s3_bucket,
+            key=key,
+        )
+        logger.info("gtfs_capture_success sha256=%s", metadata.sha256)
 
     async def run(self, *, once: bool = False) -> bool:
         loop = asyncio.get_running_loop()

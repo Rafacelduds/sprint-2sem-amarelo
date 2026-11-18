@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import boto3
@@ -17,14 +18,23 @@ from api.gtfs.storage import S3Archive
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Captura e versionamento GTFS (US02)")
     parser.add_argument("--once", action="store_true", help="Executar uma captura e encerrar")
+    parser.add_argument("--file", type=Path, help="Importar um ZIP local uma vez, preservando-o")
+    parser.add_argument(
+        "--source-id", help="Identificador da procedência; substitui GTFS_SOURCE_ID"
+    )
     args = parser.parse_args()
     try:
-        settings = GtfsSettings()
+        settings = GtfsSettings(gtfs_source_id=args.source_id) if args.source_id else GtfsSettings()
     except ValidationError:
         parser.error("configuração inválida; confira as variáveis GTFS, S3 e DATABASE_URL")
-    url = urlsplit(settings.gtfs_source_url.get_secret_value())
-    if url.scheme not in {"http", "https"} or not url.hostname:
-        parser.error("configure GTFS_SOURCE_URL com a URL HTTP(S) autorizada do ZIP")
+    if args.file is None:
+        try:
+            url = urlsplit(settings.gtfs_source_url.get_secret_value())
+            valid_url = url.scheme in {"http", "https"} and bool(url.hostname)
+        except ValueError:
+            valid_url = False
+        if not valid_url:
+            parser.error("configure GTFS_SOURCE_URL com a URL HTTP(S) autorizada do ZIP")
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -54,7 +64,11 @@ async def main() -> None:
                 Catalog(async_sessionmaker(engine, expire_on_commit=False)),
                 settings,
             )
-            success = await collector.run(once=args.once)
+            success = (
+                await collector.import_file(args.file)
+                if args.file is not None
+                else await collector.run(once=args.once)
+            )
             if not success:
                 raise SystemExit(1)
     finally:

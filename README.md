@@ -136,3 +136,6 @@ O coletor GTFS também roda em processo separado: configure `GTFS_SOURCE_URL`, a
 as migrações e execute `uv run --package amarelo-api python -m api.gtfs --once`.
 Sem `--once`, verifica a fonte diariamente e tenta novamente em até cinco minutos
 após falhas. Consulte [GTFS: configuração, armazenamento e associação temporal](docs/gtfs.md).
+Para um ZIP já baixado, use `uv run --package amarelo-api python -m api.gtfs --file
+"caminho/arquivo.zip" --source-id acervo-recebido`; a importação é única e preserva
+o original. Identifique a procedência antes de usar esse acervo como programação oficial.

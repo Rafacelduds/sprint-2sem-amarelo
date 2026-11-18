@@ -3,16 +3,26 @@
 O módulo `api.gtfs` consulta uma fonte HTTP(S), valida a estrutura básica do ZIP,
 preserva os bytes originais em S3 e publica a captura no PostgreSQL. É um processo
 separado do servidor FastAPI, sem nova rota HTTP ou mudança no cliente TypeScript.
-A associação com posições usa as tabelas da US01; sua integração deve preceder a US02.
+A associação com posições usa as tabelas da US01 e preserva a resiliência da US29,
+ambas já integradas à `main`. A revisão `20261118_0003` une os dois históricos
+publicados de migração; bancos que já aplicaram uma das linhas podem avançar para
+o mesmo `head`, sem reescrever versões nem remover posições existentes.
 
 ## Configuração e execução
 
 Siga a instalação do [README](../README.md) e configure o `.env` privado a partir
-de [.env.example](../.env.example). É necessário fornecer `GTFS_SOURCE_URL` com uma
-URL autorizada que retorne o ZIP diretamente. Não se pressupõe um endpoint público
-sem autenticação: a [área de desenvolvedores da SPTrans](https://www.sptrans.com.br/desenvolvedores)
-é a referência para acesso. URL de login/HTML é rejeitada. Cookies ou fluxos de login
-interativo não são implementados por este coletor.
+de [.env.example](../.env.example). Para a captura automática, `GTFS_SOURCE_URL`
+recebe o link direto do ZIP, não uma página de login nem o caminho do arquivo local:
+
+```dotenv
+GTFS_SOURCE_URL=https://www.sptrans.com.br/umbraco/Surface/PerfilDesenvolvedor/BaixarGTFS
+```
+
+O endpoint do domínio oficial retornou assinatura ZIP sem autenticação na consulta
+de 18/11/2026. A [área de desenvolvedores da SPTrans](https://www.sptrans.com.br/desenvolvedores)
+continua sendo a referência para acesso; mudanças na fonte podem exigir nova
+configuração. URLs de login/HTML são rejeitadas. Cookies ou fluxos de login interativo
+não são implementados por este coletor.
 
 Configure `DATABASE_URL` e as variáveis `S3_*` para serviços acessíveis pelo processo.
 Ao executar pelo host, use `localhost` em vez dos nomes Docker `postgres` e `s3`.
@@ -28,6 +38,28 @@ uv run --package amarelo-api python -m api.gtfs --once
 `--once` retorna código 0 após preservar e catalogar a captura, ou 1 em caso de
 falha. Para execução contínua, remova `--once`; o primeiro ciclo é imediato.
 O processo precisa permanecer ativo e deve ser supervisionado na hospedagem.
+
+### ZIP já baixado
+
+Para uma carga inicial ou material recebido, sem precisar de URL nem fazer download:
+
+```bash
+uv run --package amarelo-api python -m api.gtfs --file "caminho/arquivo.zip" --source-id acervo-recebido
+```
+
+O comando importa uma única vez, mesmo sem `--once`, usando os mesmos limites,
+validação, hash, S3 e catálogo da captura HTTP. Trabalha sobre uma cópia temporária;
+o original permanece intacto. `--source-id` substitui `GTFS_SOURCE_ID` só nessa execução.
+Use um identificador coerente com a procedência; o exemplo não mistura automaticamente
+o arquivo recebido com a fonte `sptrans` usada pelas posições.
+
+No catálogo, a origem local aparece como `file://imported/<nome-do-zip>`, sem diretórios
+pessoais. `captured_at` é o instante de importação, não a data desconhecida em que o
+arquivo foi originalmente baixado ou publicado. A importação não substitui a
+verificação periódica da fonte para detectar novas versões.
+
+### Execução em container
+
 Como alternativa dentro da imagem da API, depois de construí-la e aplicar as
 migrações, execute um container independente (não inicia o servidor HTTP):
 
@@ -119,16 +151,35 @@ nem comportamento da SPTrans. Não há dependência de workspace ou mock publica
 do Postman; o cenário local está em `test_gtfs_integration.py`.
 
 Além dos comandos de qualidade do README, para executar os testes de integração,
-configure `TEST_DATABASE_URL` para PostgreSQL **exclusivo de testes** e
+configure `TEST_DATABASE_URL` para PostgreSQL **exclusivo de testes**, com permissão
+de criar databases descartáveis para os testes de migração, e
 `TEST_S3_ENDPOINT_URL` para S3 local. Os testes criam/removem schemas e buckets com
 nomes aleatórios; nunca aponte essas variáveis para produção. A CI fornece ambos.
 Sem essas variáveis, os testes de integração são marcados como ignorados.
+
+Os testes de migração partem tanto de `7ad978e014e5` (US29) quanto de
+`20261118_0002` (US02), avançam para o head único `20261118_0003` e verificam que
+posições existentes continuam preservadas. Outro teste combina retentativa de
+garagem, persistência real, deduplicação e vínculo GTFS na mesma execução.
+
+Em 18/11/2026, o CLI foi executado contra o download real da SPTrans e contra um
+ZIP baixado por Pedro, usando somente PostgreSQL e S3 descartáveis. Ambos retornaram
+código 0; os objetos preservados tinham 14.326.297 bytes e SHA-256
+`3141809bcbb8c1677244bd3e4499faa612857d9685d056317b137dc1d0195655`, igual ao arquivo
+local, que permaneceu intacto. As duas capturas foram catalogadas; isso valida
+captura e preservação naquela execução, não disponibilidade contínua nem vigência
+oficial de cada linha/data. O arquivo informa extensão de calendários de
+01/10/2023 a 01/06/2027, marcada como `calendar_extent`, sem `feed_version` declarado.
 
 Para validar a reversibilidade da migração em banco descartável:
 
 ```bash
 uv run --package amarelo-api alembic -c apps/api/alembic.ini upgrade head
 uv run --package amarelo-api alembic -c apps/api/alembic.ini check
-uv run --package amarelo-api alembic -c apps/api/alembic.ini downgrade -1
+uv run --package amarelo-api alembic -c apps/api/alembic.ini downgrade 34bf95c97f11
 uv run --package amarelo-api alembic -c apps/api/alembic.ini upgrade head
 ```
+
+Essa reversão remove as extensões GTFS e de alerta da US29 no banco descartável,
+mantendo a base operacional da US01. A revisão de merge em si não altera tabelas;
+recuar apenas uma revisão a partir dela não testa a remoção das extensões.

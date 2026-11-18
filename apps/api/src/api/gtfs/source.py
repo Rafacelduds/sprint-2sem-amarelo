@@ -16,6 +16,20 @@ class GtfsError(Exception):
     """Código estável, sem URL, credencial ou conteúdo recebido."""
 
 
+def copy_local(source: Path, destination: Path, *, max_bytes: int) -> None:
+    """Cria uma fotografia temporária limitada; o arquivo recebido permanece intacto."""
+    try:
+        size = 0
+        with source.open("rb") as original, destination.open("wb") as output:
+            while chunk := original.read(1024 * 1024):
+                size += len(chunk)
+                if size > max_bytes:
+                    raise GtfsError("download_too_large")
+                output.write(chunk)
+    except OSError:
+        raise GtfsError("local_file_unavailable") from None
+
+
 @dataclass(frozen=True)
 class FeedMetadata:
     sha256: str

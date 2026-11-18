@@ -1,16 +1,20 @@
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock
 
-from api.collection.models import VehiclePosition
+from api.collection.models import CollectionCycle, CollectionSnapshot, VehiclePosition
+from api.collection.runner import Collector
+from api.collection.source import OlhoVivo, SourceError
 from api.collection.store import PostgresStore
 from api.gtfs.catalog import Catalog, resolve_version
 from api.gtfs.models import GtfsCapture, GtfsVersion
 from api.gtfs.source import inspect_feed
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from test_collection import make_snapshot
+from test_collection import IsolatedSettings, make_snapshot
 from test_collection_postgres import sessions as sessions
+from test_collection_resilience import FakeClock
 from test_gtfs_source import feed_bytes
 
 
@@ -128,3 +132,46 @@ async def test_no_catalog_is_explicit_and_does_not_drop_positions(
         row = await session.scalar(select(VehiclePosition))
         assert row is not None and row.gtfs_version_sha256 is None
         assert row.gtfs_link_status == "no_gtfs_for_date"
+
+
+async def test_resilient_collection_preserves_gtfs_link_across_garage_retry(
+    sessions: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "feed.zip"
+    path.write_bytes(feed_bytes())
+    metadata = replace(
+        inspect_feed(path),
+        starts_on=date(2026, 5, 1),
+        ends_on=date(2026, 5, 31),
+    )
+    await Catalog(sessions).record(
+        metadata,
+        source_id="sptrans",
+        source_url="https://example.org/feed",
+        captured_at=datetime(2026, 5, 17, tzinfo=UTC),
+        bucket="test",
+        key=metadata.sha256,
+    )
+    source = AsyncMock(spec=OlhoVivo)
+    source.snapshot.side_effect = [
+        make_snapshot(),
+        SourceError("garage_unavailable"),
+        make_snapshot(garage=True),
+    ]
+    collector = Collector(
+        source,
+        PostgresStore(sessions),
+        IsolatedSettings(collection_company_codes=[1], collection_max_retries=1),
+        clock=FakeClock(),
+    )
+    assert await collector.cycle(datetime(2026, 5, 18, tzinfo=UTC))
+    assert [call.args for call in source.snapshot.await_args_list] == [(None,), (1,), (1,)]
+    async with sessions() as session:
+        assert await session.scalar(select(func.count()).select_from(CollectionSnapshot)) == 2
+        assert await session.scalar(select(func.count()).select_from(VehiclePosition)) == 1
+        position = await session.scalar(select(VehiclePosition))
+        assert position is not None and position.gtfs_version_sha256 == metadata.sha256
+        assert position.gtfs_link_status == "matched"
+        cycle = await session.scalar(select(CollectionCycle))
+        assert cycle is not None and cycle.status == "success"

@@ -89,3 +89,46 @@ async def test_temporary_file_removed_and_catalog_errors_are_redacted(
         assert not await GtfsCollector(client, archive, catalog, configured).cycle()
     assert len(paths) == 1 and not paths[0].exists()
     assert "secret" not in caplog.text
+
+
+async def test_local_import_without_url_preserves_original_and_records_safe_name(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "feed recebido.zip"
+    body = feed_bytes()
+    source.write_bytes(body)
+    archive = Mock(spec=Archive)
+
+    def preserve(path: Path, *_: object) -> str:
+        assert path != source and path.read_bytes() == body
+        return "gtfs/test.zip"
+
+    archive.preserve.side_effect = preserve
+    catalog = AsyncMock(spec=Catalog)
+
+    def no_network(request: httpx.Request) -> httpx.Response:
+        pytest.fail("Importação local não deve fazer requisições HTTP")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(no_network)) as client:
+        collector = GtfsCollector(client, archive, catalog, settings(gtfs_source_url=""))
+        assert await collector.import_file(source)
+    assert source.read_bytes() == body
+    catalog.record.assert_awaited_once()
+    assert catalog.record.call_args.kwargs["source_url"] == "file://imported/feed%20recebido.zip"
+
+
+@pytest.mark.parametrize("missing", [False, True])
+async def test_local_import_limits_and_missing_file_never_publish(
+    tmp_path: Path,
+    missing: bool,
+) -> None:
+    source = tmp_path / "feed.zip"
+    if not missing:
+        source.write_bytes(feed_bytes())
+    archive, catalog = Mock(spec=Archive), AsyncMock(spec=Catalog)
+    async with httpx.AsyncClient() as client:
+        collector = GtfsCollector(client, archive, catalog, settings(gtfs_max_bytes=1))
+        assert not await collector.import_file(source)
+    archive.preserve.assert_not_called()
+    catalog.record.assert_not_called()
+    assert source.exists() is not missing
