@@ -118,7 +118,8 @@ recalibrar com o volume medido, não uma reserva nem garantia de suficiência.
 Testes exigem `TEST_DATABASE_URL`, `TEST_S3_ENDPOINT_URL` e
 `TEST_BACKUP_S3_ENDPOINT_URL`. O usuário do banco de testes precisa criar bancos
 temporários. Eles usam nomes `test_backup_<uuid>`, removidos no encerramento.
-A CI fornece PostgreSQL, os dois S3 locais e clientes PostgreSQL 16.
+A CI fornece PostgreSQL e os dois S3 locais. Usa os clientes versão 16 do próprio
+container PostgreSQL, evitando depender da versão disponível no Ubuntu do runner.
 
 O primeiro ensaio e seu tempo são evidência para o volume testado. Agende uma nova
 restauração em até seis meses e depois a cada seis meses; a existência do comando
