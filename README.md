@@ -149,6 +149,13 @@ posições em operação e garagens e persistência no PostgreSQL. Configure
 [execução e contrato da coleta](docs/coleta.md).
 O serviço Docker é opcional, ativado pelo profile `coleta`.
 
+O coletor GTFS também roda em processo separado: configure `GTFS_SOURCE_URL`, aplique
+as migrações e execute `uv run --package amarelo-api python -m api.gtfs --once`.
+Sem `--once`, verifica a fonte diariamente e tenta novamente em até cinco minutos
+após falhas. Consulte [GTFS: configuração, armazenamento e associação temporal](docs/gtfs.md).
+Para um ZIP já baixado, use `uv run --package amarelo-api python -m api.gtfs --file
+"caminho/arquivo.zip" --source-id acervo-recebido`; a importação é única e preserva
+o original. Identifique a procedência antes de usar esse acervo como programação oficial.
 O arquivador da US12 preserva as respostas da inbox no S3 em JSON.gz imutável,
 sem bloquear a coleta quando o S3 fica indisponível. Comandos de arquivamento,
 importação histórica e proveniência estão no contrato de armazenamento acima.

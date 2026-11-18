@@ -1,3 +1,4 @@
+import hashlib
 import os
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -44,7 +45,7 @@ async def databases() -> AsyncIterator[tuple[str, str]]:
         async with engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
             await connection.execute(text("CREATE TABLE alembic_version (version_num varchar(32))"))
-            await connection.execute(text("INSERT INTO alembic_version VALUES ('b32000000001')"))
+            await connection.execute(text("INSERT INTO alembic_version VALUES ('20261118_0005')"))
         yield urls[0], urls[1]
     finally:
         await engine.dispose()
@@ -349,6 +350,16 @@ async def test_backup_restore_new_processing_backup_restore_preserves_aliases(
             raw = await session.scalar(select(RawObject))
             assert raw is not None
             original = ObjectRef.model_validate(raw.reference)
+        gtfs_payload = b"legacy-gtfs-archive"
+        archive.client.put_object(
+            Bucket=archive.bucket,
+            Key="gtfs/sptrans/test.zip",
+            Body=gtfs_payload,
+            ContentType="application/zip",
+            Metadata={"sha256": hashlib.sha256(gtfs_payload).hexdigest()},
+            IfNoneMatch="*",
+        )
+        original_gtfs = archive.reference("gtfs/sptrans/test.zip")
         path = tmp_path / "inventory"
         path.write_bytes(inventory_bytes([original]))
         old_output = archive.put(path, "derived/old-inventory.json")
@@ -399,6 +410,7 @@ async def test_backup_restore_new_processing_backup_restore_preserves_aliases(
         recovery = RecoveryManifest.model_validate_json(recovery_path.read_bytes())
         identities = {S3Archive.identity(entry.primary) for entry in recovery.objects}
         assert {S3Archive.identity(original), S3Archive.identity(physical)} <= identities
+        assert S3Archive.identity(original_gtfs) in identities
         assert (
             len(
                 {
@@ -415,6 +427,7 @@ async def test_backup_restore_new_processing_backup_restore_preserves_aliases(
         await restore(
             secondary, next_backup, final, third_engine, third_url, tmp_path / "second-map.json"
         )
+        final.verify(original_gtfs)
         for index, ref in enumerate([old_manifest, new_manifest]):
             manifest_path = tmp_path / f"manifest-{index}"
             final.download(ref, manifest_path)

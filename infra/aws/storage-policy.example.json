@@ -30,7 +30,12 @@
       "Sid": "NeverDeleteSourceArchive",
       "Effect": "Deny",
       "Action": ["s3:DeleteObject", "s3:DeleteObjectVersion"],
-      "Resource": ["arn:aws:s3:::REPLACE-PRIMARY/raw/*", "arn:aws:s3:::REPLACE-BACKUP/raw/*"]
+      "Resource": [
+        "arn:aws:s3:::REPLACE-PRIMARY/raw/*",
+        "arn:aws:s3:::REPLACE-BACKUP/raw/*",
+        "arn:aws:s3:::REPLACE-PRIMARY/gtfs/*",
+        "arn:aws:s3:::REPLACE-BACKUP/gtfs/*"
+      ]
     }
   ]
 }

@@ -18,15 +18,6 @@ jobs:
         options: >-
           --health-cmd "curl -f http://localhost:4566/_localstack/health"
           --health-interval 5s --health-timeout 5s --health-retries 20
-      s3:
-        image: localstack/localstack:3.8
-        env:
-          SERVICES: s3
-        ports:
-          - 4566:4566
-        options: >-
-          --health-cmd "curl -f http://localhost:4566/_localstack/health"
-          --health-interval 5s --health-timeout 5s --health-retries 20
       postgres:
         image: postgres:16-alpine
         env:
@@ -38,11 +29,20 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U amarelo -d amarelo_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
+      s3:
+        image: localstack/localstack:3.8
+        env:
+          SERVICES: s3
+        ports:
+          - 4566:4566
+        options: >-
+          --health-cmd "curl -f http://localhost:4566/_localstack/health"
+          --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       TEST_BACKUP_S3_ENDPOINT_URL: http://localhost:4567
-      TEST_S3_ENDPOINT_URL: http://localhost:4566
       DATABASE_URL: postgresql+asyncpg://amarelo:test-only@localhost:5432/amarelo_test
       TEST_DATABASE_URL: postgresql+asyncpg://amarelo:test-only@localhost:5432/amarelo_test
+      TEST_S3_ENDPOINT_URL: http://localhost:4566
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

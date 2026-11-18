@@ -116,6 +116,12 @@ ensaio. Recuperações parciais que falham exigem outro destino vazio.
 
 ## AWS e limites da demonstração
 
+Após a integração da US02, o backup também inclui os ZIPs no namespace `gtfs/`,
+respeitando as chaves e metadados já publicados por esse coletor. Seu SHA-256 é
+conferido na leitura; a origem não é reescrita. O mapa preserva esses aliases em
+restaurações sucessivas. A migração de união `20261118_0005` mantém uma única
+head Alembic para US02 e US32, sem reescrever migrações publicadas.
+
 No desenvolvimento são duas instâncias LocalStack com volumes distintos.
 Isso permite desligar o principal no ensaio, mas compartilham a máquina física.
 Em AWS use buckets privados versionados em Virgínia, preferencialmente com o

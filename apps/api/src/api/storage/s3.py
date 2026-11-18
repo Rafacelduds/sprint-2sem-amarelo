@@ -66,6 +66,15 @@ class S3Archive:
     def reference(self, key: str) -> ObjectRef:
         head = self.client.head_object(Bucket=self.bucket, Key=key)
         metadata = dict[str, str](head["Metadata"])
+        # Compatibilidade com os ZIPs imutáveis já escritos pela US02.
+        if key.startswith("gtfs/") and "original-sha256" not in metadata:
+            metadata.update(
+                {
+                    "original-sha256": metadata["sha256"],
+                    "stored-sha256": metadata["sha256"],
+                    "original-size": str(head["ContentLength"]),
+                }
+            )
         return ObjectRef(
             bucket=self.bucket,
             key=key,

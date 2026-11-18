@@ -49,9 +49,21 @@ class BackupService:
             # Listagem após o snapshot do dump; tabelas do catálogo são append-only.
             refs: dict[str, ObjectRef] = {}
             catalog_identities: set[str] = set()
-            for prefix in ("raw/", "derived/", "manifests/"):
+            for prefix in ("raw/", "derived/", "manifests/", "gtfs/"):
                 items = await asyncio.to_thread(list, self.primary.objects(prefix))
                 refs.update((S3Archive.identity(ref), ref) for ref in items)
+            # Inclui aliases recuperados que não estão no catálogo US12 (ex.: GTFS).
+            for identity, physical in self.primary.relocations.items():
+                bucket, key, version = json.loads(identity)
+                logical = ObjectRef.model_validate(
+                    {
+                        **physical.model_dump(),
+                        "bucket": bucket,
+                        "key": key,
+                        "version_id": version,
+                    }
+                )
+                refs[identity] = logical
             async with self.sessions() as session:
                 revision = await session.scalar(text("SELECT version_num FROM alembic_version"))
                 for raw in (await session.scalars(select(RawObject))).all():
