@@ -9,6 +9,15 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     services:
+      s3-backup:
+        image: localstack/localstack:3.8
+        env:
+          SERVICES: s3
+        ports:
+          - 4567:4566
+        options: >-
+          --health-cmd "curl -f http://localhost:4566/_localstack/health"
+          --health-interval 5s --health-timeout 5s --health-retries 20
       s3:
         image: localstack/localstack:3.8
         env:
@@ -30,6 +39,7 @@ jobs:
           --health-cmd "pg_isready -U amarelo -d amarelo_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      TEST_BACKUP_S3_ENDPOINT_URL: http://localhost:4567
       TEST_S3_ENDPOINT_URL: http://localhost:4566
       DATABASE_URL: postgresql+asyncpg://amarelo:test-only@localhost:5432/amarelo_test
       TEST_DATABASE_URL: postgresql+asyncpg://amarelo:test-only@localhost:5432/amarelo_test
@@ -40,6 +50,11 @@ jobs:
           python-version: '3.13'
           enable-cache: true
       - run: uv sync --all-packages --all-groups --frozen
+      - name: PostgreSQL 16 client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
       - run: uv run --package amarelo-api alembic -c apps/api/alembic.ini upgrade head
       - run: uv run pytest
       - run: uv run ruff check .

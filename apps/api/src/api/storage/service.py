@@ -60,6 +60,8 @@ class ArchiveService:
                 )
             ).all()
         for snapshot in snapshots:
+            if snapshot.body is None:
+                raise ValueError("inbox sem bytes e sem referência arquivada")
             day = snapshot.collected_at.astimezone(UTC).strftime("%Y-%m-%d")
             endpoint = "posicao" if snapshot.company is None else f"garagem/{snapshot.company}"
             key = f"raw/olho-vivo/{endpoint}/{day}/{snapshot.id}.json.gz"

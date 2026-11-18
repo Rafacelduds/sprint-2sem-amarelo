@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
+from api.backup import models as backup_models  # noqa: F401
 from api.collection import models  # noqa: F401 — registra tabelas no metadata
 from api.config import get_settings
 from api.db.base import Base

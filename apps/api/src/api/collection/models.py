@@ -27,7 +27,8 @@ class CollectionSnapshot(Base):
     company: Mapped[int | None]
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     # Inbox transacional de integração: bytes recebidos, antes de qualquer normalização.
-    body: Mapped[bytes] = mapped_column(LargeBinary)
+    body: Mapped[bytes | None] = mapped_column(LargeBinary)
+    body_purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class VehiclePosition(Base):

@@ -152,3 +152,6 @@ O serviço Docker é opcional, ativado pelo profile `coleta`.
 O arquivador da US12 preserva as respostas da inbox no S3 em JSON.gz imutável,
 sem bloquear a coleta quando o S3 fica indisponível. Comandos de arquivamento,
 importação histórica e proveniência estão no contrato de armazenamento acima.
+
+Backup diário, retenção dos sete dumps mais recentes, limpeza segura da inbox e
+recuperação em destinos vazios: [backup e restauração](docs/backup-e-restauracao.md).
