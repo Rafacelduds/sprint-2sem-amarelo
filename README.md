@@ -19,8 +19,9 @@ API FastAPI e aplicação React/Vite com mapa público de posições dos ônibus
 Na raiz do repositório:
 
 ```bash
-cp .env.example .env
-docker compose up --build
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+docker compose --env-file apps/api/.env --env-file apps/web/.env up --build
 ```
 
 Acesse:
@@ -37,7 +38,7 @@ consulta `/api/vehicles/positions` e mostra as posições e a idade da coleta.
 Para encerrar os serviços, preservando os volumes:
 
 ```bash
-docker compose down
+docker compose --env-file apps/api/.env --env-file apps/web/.env down
 ```
 
 ## Desenvolvimento sem Docker para API e frontend
@@ -52,9 +53,20 @@ uv sync --all-packages --all-groups --frozen
 npm ci
 ```
 
-Configure `DATABASE_URL` para o PostgreSQL local. Se usar `.env.example` como base,
-troque o host `postgres` por `localhost`; para acessar o LocalStack pelo host,
-troque `http://s3:4566` por `http://localhost:4566` em `S3_ENDPOINT_URL`.
+Os arquivos de ambiente ficam em cada aplicação: `apps/api/.env` contém as
+configurações do backend e dos serviços; `apps/web/.env` contém as variáveis
+`VITE_*` do frontend. Copie os respectivos `.env.example` se ainda não tiver esses
+arquivos. Os `.env` locais são ignorados pelo Git e pelo contexto de build Docker.
+
+A API lê `apps/api/.env` independentemente da pasta de onde for iniciada; o Vite
+lê `apps/web/.env`. Variáveis de ambiente do processo têm precedência sobre os
+arquivos. Os comandos Compose deste README usam ambos os arquivos explicitamente
+para interpolar as configurações dos serviços.
+
+Em `apps/api/.env`, configure `DATABASE_URL` para o PostgreSQL local: troque o host
+`postgres` por `localhost`. Para acessar o LocalStack pelo host, troque
+`http://s3:4566` por `http://localhost:4566` em `S3_ENDPOINT_URL`. Ao voltar ao setup
+inteiramente em Docker, use os hosts `postgres` e `s3` da rede do Compose.
 
 Execute API e frontend em terminais separados:
 
@@ -109,7 +121,7 @@ A CI executa essas verificações de backend e frontend. Para conferir a
 configuração dos serviços sem iniciá-los:
 
 ```bash
-docker compose config --quiet
+docker compose --env-file apps/api/.env --env-file apps/web/.env config --quiet
 ```
 
 ## Estrutura
@@ -124,16 +136,32 @@ infra/
   localstack/ inicialização do bucket S3 de desenvolvimento
 ```
 
+O contrato de separação entre dados brutos e derivados, escrita imutável e
+proveniência está em
+[`docs/armazenamento-e-proveniencia.md`](docs/armazenamento-e-proveniencia.md).
+
 ## Coleta de dados
 
 O coletor Olho Vivo roda em processo separado, com intervalo configurável,
 posições em operação e garagens e persistência no PostgreSQL. Configure
-`OLHOVIVO_TOKEN` no `.env` privado e consulte [execução e contrato da coleta](docs/coleta.md).
+`CHAVE_API_OLHO_VIVO` (ou `OLHOVIVO_TOKEN`) em `apps/api/.env` e consulte
+[execução e contrato da coleta](docs/coleta.md).
 O serviço Docker é opcional, ativado pelo profile `coleta`.
+
+O coletor GTFS também roda em processo separado: configure `GTFS_SOURCE_URL`, aplique
+as migrações e execute `uv run --package amarelo-api python -m api.gtfs --once`.
+Sem `--once`, verifica a fonte diariamente e tenta novamente em até cinco minutos
+após falhas. Consulte [GTFS: configuração, armazenamento e associação temporal](docs/gtfs.md).
+Para um ZIP já baixado, use `uv run --package amarelo-api python -m api.gtfs --file
+"caminho/arquivo.zip" --source-id acervo-recebido`; a importação é única e preserva
+o original. Identifique a procedência antes de usar esse acervo como programação oficial.
+O arquivador da US12 preserva as respostas da inbox no S3 em JSON.gz imutável,
+sem bloquear a coleta quando o S3 fica indisponível. Comandos de arquivamento,
+importação histórica e proveniência estão no contrato de armazenamento acima.
 
 ## Mapa ao vivo (US22)
 
-Configure `OLHO_VIVO_TOKEN` em `apps/api/.env` (modelo em `apps/api/.env.example`). O token nunca vai ao frontend. A API aceita também variáveis do processo, que têm precedência; o arquivo do app tem precedência sobre o `.env` da raiz. O Compose injeta esse arquivo opcional e mantém os endereços internos de PostgreSQL/S3. Sem token, a tela informa indisponibilidade, sem dados fictícios.
+Configure `OLHO_VIVO_TOKEN` em `apps/api/.env` (modelo em `apps/api/.env.example`). O token nunca vai ao frontend. A API carrega `apps/api/.env` independentemente do diretório de execução; variáveis do processo têm precedência. O Compose injeta esse arquivo opcional e mantém os endereços internos de PostgreSQL/S3. Sem token, a tela informa indisponibilidade, sem dados fictícios.
 
 Execute API e frontend pelos comandos de desenvolvimento acima. O Vite usa a API local na porta 8000; no Compose, `API_PROXY_TARGET` aponta para `http://api:8000`. O mapa não precisa de banco/S3 para esta consulta.
 

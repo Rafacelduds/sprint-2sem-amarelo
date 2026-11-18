@@ -1,6 +1,6 @@
 # Catálogo de rede para o mapa (US22 ↔ US02)
 
-Contrato de integração local preparado a pedido de Rafa em 18/11/2026; não é aprovação de uma interface compartilhada com a US02. O produtor GTFS ainda não está neste checkout. O adaptador do mapa **não baixa nem coleta** GTFS: consome um arquivo exportado da US02, indicado por `NETWORK_CATALOG_PATH` no processo ou no ambiente da API. A definição executável é `NetworkExport` em `apps/api/src/api/network.py`.
+Contrato de integração local preparado a pedido de Rafa em 18/11/2026; não é aprovação de uma interface compartilhada com a US02. O coletor GTFS da US02 já foi integrado à main. A produção da exportação descrita abaixo, com geometrias e correspondências verificadas para o mapa, ainda precisa ser conectada. O adaptador do mapa **não baixa nem coleta** GTFS: consome um arquivo exportado da US02, indicado por `NETWORK_CATALOG_PATH` no processo ou no ambiente da API. A definição executável é `NetworkExport` em `apps/api/src/api/network.py`.
 
 ## Artefato consumido
 
