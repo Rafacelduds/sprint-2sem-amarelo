@@ -36,6 +36,13 @@ Descompactar recupera exatamente os bytes recebidos, inclusive campos não model
 Parquets históricos são preservados como recebidos. A data de importação no catálogo
 não é apresentada como horário de captura desconhecido. Normalização fica em `derived/`.
 
+O componente do nome do arquivo recebido usa codificação percentual UTF-8 na chave
+(por exemplo, `gps maio.parquet` vira `gps%20maio.parquet`), também nas retomadas.
+Isso não altera os bytes do arquivo. A referência é validada antes do upload.
+O script pontual `scripts/consultar_olho_vivo.py --output CAMINHO` aceita caminhos
+relativos à pasta atual e absolutos fora do repositório. O resultado informa o
+caminho relativo à raiz quando possível e absoluto nos demais casos.
+
 ## Gravação de dados brutos
 
 A operação de escrita deve ter semântica de criação:

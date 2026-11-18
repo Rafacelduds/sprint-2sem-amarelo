@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from urllib.parse import quote
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import select, text
@@ -93,7 +94,7 @@ class ArchiveService:
         if not dataset or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789-_" for c in dataset):
             raise ValueError("dataset deve usar letras minúsculas, números, - ou _")
         checksum, _ = await asyncio.to_thread(digest, path)
-        key = f"raw/received/{dataset}/{checksum}/{path.name}"
+        key = f"raw/received/{dataset}/{checksum}/{quote(path.name, safe='')}"
         identity = uuid5(NAMESPACE_URL, key)
         async with self.sessions() as session:
             previous = await session.get(RawObject, identity)

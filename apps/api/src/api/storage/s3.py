@@ -98,6 +98,18 @@ class S3Archive:
                     with gzip.GzipFile(filename="", mode="wb", fileobj=target, mtime=0) as zipped:
                         shutil.copyfileobj(source, zipped, CHUNK)
             stored_hash, stored_size = digest(stored)
+            # Validar antes de qualquer escrita remota; falha não pode deixar objeto órfão.
+            reference = ObjectRef(
+                bucket=self.bucket,
+                key=key,
+                sha256=original_hash,
+                stored_sha256=stored_hash,
+                size=size,
+                stored_size=stored_size,
+                encoding="gzip" if compress else "identity",
+                content_type=content_type,
+                metadata=metadata or {},
+            )
             tags = dict(metadata or {})
             tags.update(
                 {
@@ -133,18 +145,7 @@ class S3Archive:
                     raise CollisionError(key) from None
                 self.verify(existing)
                 return existing
-            reference = ObjectRef(
-                bucket=self.bucket,
-                key=key,
-                version_id=result.get("VersionId"),
-                sha256=original_hash,
-                stored_sha256=stored_hash,
-                size=size,
-                stored_size=stored_size,
-                encoding="gzip" if compress else "identity",
-                content_type=content_type,
-                metadata=metadata or {},
-            )
+            reference = reference.model_copy(update={"version_id": result.get("VersionId")})
             self.verify(reference)
             return reference
 
