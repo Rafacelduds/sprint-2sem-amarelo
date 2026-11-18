@@ -29,4 +29,4 @@ As configurações da API estão em [config.py](../apps/api/src/api/config.py); 
 
 ## Evolução
 
-Coleta, processamento e publicação de indicadores ainda precisam ser definidos pelas US e suas dependências. Ao implementar, atualize este mapa com os componentes e fluxos que realmente existirem. Escolhas de armazenamento, contratos entre componentes ou regras com impacto em várias US precisam de justificativa em [decisoes.md](decisoes.md).
+A coleta Olho Vivo está em `apps/api/src/api/collection`, executada em processo separado. Persiste ciclos, uma inbox de respostas e posições deduplicadas no PostgreSQL; veja o [contrato da coleta](coleta.md). O acervo bruto imutável S3 continua sob responsabilidade da US12. Processamento analítico e publicação de indicadores ainda dependem das respectivas US. Escolhas com impacto em várias US precisam de justificativa em [decisoes.md](decisoes.md).

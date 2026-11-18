@@ -127,6 +127,7 @@ infra/
 
 ## Coleta de dados
 
-Os requisitos de coleta e integração de dados do projeto continuam vigentes.
-A implementação da coleta será definida pelo Kayan. O setup atual não inclui
-uma implementação de coleta nem um serviço correspondente no Docker Compose.
+O coletor Olho Vivo roda em processo separado, com intervalo configurável,
+posições em operação e garagens e persistência no PostgreSQL. Configure
+`OLHOVIVO_TOKEN` no `.env` privado e consulte [execução e contrato da coleta](docs/coleta.md).
+O serviço Docker é opcional, ativado pelo profile `coleta`.
