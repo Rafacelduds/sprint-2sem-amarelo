@@ -19,13 +19,19 @@ logger = logging.getLogger(__name__)
 
 
 def archive_from_settings(settings: Settings) -> S3Archive:
-    return S3Archive(
+    archive = S3Archive(
         settings.s3_bucket,
         endpoint=settings.s3_endpoint_url,
         region=settings.s3_region,
         access_key=settings.s3_access_key or None,
         secret_key=settings.s3_secret_key or None,
     )
+    if settings.s3_restore_map:
+        contents = json.loads(settings.s3_restore_map.read_text(encoding="utf-8"))
+        archive.relocations = {
+            identity: ObjectRef.model_validate(ref) for identity, ref in contents.items()
+        }
+    return archive
 
 
 def inventory_bytes(refs: list[ObjectRef]) -> bytes:
@@ -65,6 +71,7 @@ async def main() -> None:
             if args.command == "archive":
                 while True:
                     await guard.execute(text("SELECT 1"))
+                    await guard.commit()
                     try:
                         count = await service.archive_pending()
                         logger.info("archive_batch count=%s", count)

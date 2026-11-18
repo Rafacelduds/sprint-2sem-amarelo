@@ -14,10 +14,10 @@ from api.storage.__main__ import inventory_bytes
 from api.storage.contracts import ObjectRef, ProcessingManifest
 from api.storage.models import ProcessingRun, RawObject
 from api.storage.s3 import CollisionError, S3Archive
-from api.storage.service import ArchiveService
+from api.storage.service import ArchiveService, exclusive
 from pydantic import ValidationError
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from test_collection import make_snapshot
 from test_collection_postgres import sessions as sessions  # noqa: F401
 
@@ -165,6 +165,15 @@ async def test_history_is_preserved_and_import_is_repeatable(
     assert path.read_bytes() == b"PAR1historical-sourcePAR1"
 
 
+def test_download_rejects_wrong_stored_hash(archive: S3Archive, tmp_path: Path) -> None:
+    source = tmp_path / "input"
+    source.write_bytes(b"original")
+    ref = archive.put(source, "raw/original")
+    corrupt = ref.model_copy(update={"stored_sha256": "0" * 64})
+    with pytest.raises(ValueError, match="hash armazenado"):
+        archive.verify(corrupt)
+
+
 def test_provenance_requires_versions_and_timezone() -> None:
     with pytest.raises(ValidationError):
         ProcessingManifest.model_validate(
@@ -179,6 +188,24 @@ def test_provenance_requires_versions_and_timezone() -> None:
                 "outputs": [],
             }
         )
+
+
+@pytest.mark.asyncio
+async def test_archive_guard_survives_commit_without_holding_open_transaction() -> None:
+    url = os.getenv("TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("TEST_DATABASE_URL não configurada")
+    engine = create_async_engine(url)
+    try:
+        async with exclusive(engine, 710112) as guard:
+            assert not guard.in_transaction()
+            with pytest.raises(RuntimeError, match="já está"):
+                async with exclusive(engine, 710112):
+                    pytest.fail("segunda instância adquiriu o lock")
+        async with exclusive(engine, 710112):
+            pass
+    finally:
+        await engine.dispose()
 
 
 @pytest.mark.asyncio

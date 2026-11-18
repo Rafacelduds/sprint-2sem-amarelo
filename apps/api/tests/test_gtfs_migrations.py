@@ -30,7 +30,10 @@ async def alembic(database_url: str, action: str, target: str | None = None) -> 
     assert process.returncode == 0, f"Falha na migração: {action} {target or ''}"
 
 
-@pytest.mark.parametrize("starting_revision", ["7ad978e014e5", "20261118_0002", "b12000000001"])
+@pytest.mark.parametrize(
+    "starting_revision",
+    ["7ad978e014e5", "20261118_0002", "b12000000001", "20261118_0004", "b32000000001"],
+)
 async def test_upgrade_from_each_published_branch_preserves_positions(
     starting_revision: str,
 ) -> None:
@@ -66,7 +69,7 @@ async def test_upgrade_from_each_published_branch_preserves_positions(
             )
             columns = "id, snapshot_id, prefix, gps_at, collected_at, in_garage"
             values = ":id, :snapshot, 'legacy', :at, :at, false"
-            if starting_revision == "20261118_0002":
+            if starting_revision in {"20261118_0002", "20261118_0004"}:
                 columns += ", gtfs_link_status"
                 values += ", 'no_gtfs_for_date'"
             await connection.execute(
@@ -77,7 +80,7 @@ async def test_upgrade_from_each_published_branch_preserves_positions(
         await alembic(target_url, "check")
         async with engine.connect() as connection:
             assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-                "20261118_0004"
+                "20261118_0005"
             )
             row = (
                 await connection.execute(
@@ -90,7 +93,9 @@ async def test_upgrade_from_each_published_branch_preserves_positions(
             ).one()
             assert row.prefix == "legacy" and row.gtfs_version_sha256 is None
             assert row.gtfs_link_status == (
-                "no_gtfs_for_date" if starting_revision == "20261118_0002" else "not_evaluated"
+                "no_gtfs_for_date"
+                if starting_revision in {"20261118_0002", "20261118_0004"}
+                else "not_evaluated"
             )
             await connection.execute(text("SELECT alerted_at FROM collection_cycles"))
         # Reversão só no banco descartável: preserva as tabelas e os dados da US01.

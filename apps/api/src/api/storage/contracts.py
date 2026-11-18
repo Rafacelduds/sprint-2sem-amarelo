@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class ObjectRef(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     bucket: str = Field(min_length=1)
-    key: str = Field(pattern=r"^(raw|derived|manifests|backups)/[^\s]+$")
+    key: str = Field(pattern=r"^(raw|derived|manifests|backups|gtfs)/[^\s]+$")
     version_id: str | None = None
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     stored_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")

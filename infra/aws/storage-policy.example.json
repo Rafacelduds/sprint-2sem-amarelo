@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListAndInspectBuckets",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:ListBucketVersions", "s3:GetBucketVersioning"],
+      "Resource": ["arn:aws:s3:::REPLACE-PRIMARY", "arn:aws:s3:::REPLACE-BACKUP"]
+    },
+    {
+      "Sid": "ReadArchiveAndBackup",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+      "Resource": ["arn:aws:s3:::REPLACE-PRIMARY/*", "arn:aws:s3:::REPLACE-BACKUP/*"]
+    },
+    {
+      "Sid": "CreateOnly",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": ["arn:aws:s3:::REPLACE-PRIMARY/*", "arn:aws:s3:::REPLACE-BACKUP/*"],
+      "Condition": {"StringEquals": {"s3:if-none-match": "*"}}
+    },
+    {
+      "Sid": "ExpireDatabaseRecoveryPointsOnly",
+      "Effect": "Allow",
+      "Action": ["s3:DeleteObject", "s3:DeleteObjectVersion"],
+      "Resource": ["arn:aws:s3:::REPLACE-BACKUP/backups/database/*", "arn:aws:s3:::REPLACE-BACKUP/backups/runs/*"]
+    },
+    {
+      "Sid": "NeverDeleteSourceArchive",
+      "Effect": "Deny",
+      "Action": ["s3:DeleteObject", "s3:DeleteObjectVersion"],
+      "Resource": [
+        "arn:aws:s3:::REPLACE-PRIMARY/raw/*",
+        "arn:aws:s3:::REPLACE-BACKUP/raw/*",
+        "arn:aws:s3:::REPLACE-PRIMARY/gtfs/*",
+        "arn:aws:s3:::REPLACE-BACKUP/gtfs/*"
+      ]
+    }
+  ]
+}

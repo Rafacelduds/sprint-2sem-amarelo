@@ -102,7 +102,7 @@ registra suas próprias versões e saídas, sem substituir a execução anterior
 - A coleta é a implementação do Kayan. O arquivador consome sua inbox em lotes de dez;
   falha no S3 conserva a pendência no banco. O modo contínuo consulta a cada cinco
   segundos e usa advisory lock para impedir execução duplicada.
-- Backup e restauração pertencem à US32.
+- Backup e restauração estão na US32; veja [operação](backup-e-restauracao.md).
 - Publicação dos brutos para download pertence à US09.
 - Recálculo automático quando chega dado atrasado ou muda uma regra pertence à US20.
 
