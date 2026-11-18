@@ -23,7 +23,7 @@ class Line(BaseModel):
     c: str | None = None
     cl: int | None = None
     sl: int | None = None
-    vs: list[Vehicle] = Field(default_factory=lambda: list[Vehicle]())
+    vs: list[Vehicle]
 
 
 class Company(BaseModel):
