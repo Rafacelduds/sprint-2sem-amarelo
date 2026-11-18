@@ -23,7 +23,7 @@ class Line(BaseModel):
     c: str | None = None
     cl: int | None = None
     sl: int | None = None
-    vs: list[Vehicle] = Field(default_factory=lambda: list[Vehicle]())
+    vs: list[Vehicle]
 
 
 class Company(BaseModel):
@@ -55,7 +55,6 @@ class OlhoVivo:
         self.client = client
         self.token = token
         self.authenticated = False
-        self.companies: list[int] | None = None
 
     async def authenticate(self) -> None:
         try:
@@ -83,8 +82,6 @@ class OlhoVivo:
             raise SourceError(f"{endpoint}:transport_failure") from None
 
     async def company_codes(self) -> list[int]:
-        if self.companies is not None:
-            return self.companies
         response = await self.get("/Empresa")
         try:
             data = TypeAdapter(list[Companies] | Companies).validate_json(response.content)
@@ -94,7 +91,6 @@ class OlhoVivo:
                 raise ValueError("empty companies")
         except (ValueError, TypeError, KeyError):
             raise SourceError("invalid_companies") from None
-        self.companies = codes
         return codes
 
     async def snapshot(self, company: int | None = None) -> Snapshot:

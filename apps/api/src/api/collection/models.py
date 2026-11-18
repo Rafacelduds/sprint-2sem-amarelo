@@ -16,6 +16,7 @@ class CollectionCycle(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str]
     error_code: Mapped[str | None]
+    alerted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class CollectionSnapshot(Base):

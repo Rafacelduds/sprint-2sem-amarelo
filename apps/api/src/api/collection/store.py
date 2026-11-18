@@ -1,15 +1,29 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker
 
 from api.collection.models import CollectionCycle, CollectionSnapshot, VehiclePosition
 from api.collection.source import Snapshot
 from api.gtfs.catalog import resolve_version
+
+
+@asynccontextmanager
+async def single_collector(engine: AsyncEngine) -> AsyncGenerator[AsyncConnection]:
+    async with engine.connect() as connection:
+        acquired = await connection.scalar(text("SELECT pg_try_advisory_lock(710129)"))
+        if not acquired:
+            raise RuntimeError("collection_already_running")
+        try:
+            yield connection
+        finally:
+            await connection.execute(text("SELECT pg_advisory_unlock(710129)"))
 
 
 class PostgresStore:
@@ -87,4 +101,40 @@ class PostgresStore:
                 update(CollectionCycle)
                 .where(CollectionCycle.id == cycle_id)
                 .values(status=status, error_code=error, finished_at=datetime.now(UTC))
+            )
+
+    async def recover_interrupted(self) -> None:
+        """Chamado somente pelo processo que detém o lock exclusivo de coleta."""
+        async with self.sessions.begin() as session:
+            await session.execute(
+                update(CollectionCycle)
+                .where(CollectionCycle.status == "running")
+                .values(
+                    status="interrupted",
+                    error_code="process_interrupted",
+                    finished_at=datetime.now(UTC),
+                )
+            )
+
+    async def outage(self) -> CollectionCycle | None:
+        """Primeiro ciclo incompleto desde o último sucesso integral, inclusive após reinício."""
+        async with self.sessions() as session:
+            last_success = await session.scalar(
+                select(func.max(CollectionCycle.scheduled_at)).where(
+                    CollectionCycle.status == "success"
+                )
+            )
+            statement = select(CollectionCycle).where(
+                CollectionCycle.status.in_(["origin_failure", "storage_failure", "interrupted"])
+            )
+            if last_success is not None:
+                statement = statement.where(CollectionCycle.scheduled_at > last_success)
+            return await session.scalar(statement.order_by(CollectionCycle.scheduled_at).limit(1))
+
+    async def mark_alerted(self, cycle_id: UUID, when: datetime) -> None:
+        async with self.sessions.begin() as session:
+            await session.execute(
+                update(CollectionCycle)
+                .where(CollectionCycle.id == cycle_id)
+                .values(alerted_at=when)
             )
