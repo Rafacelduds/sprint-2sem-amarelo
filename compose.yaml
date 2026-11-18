@@ -64,6 +64,7 @@ services:
     healthcheck:
       disable: true
     environment:
+      PYTHONPATH: /workspace/apps/api/src
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
       OLHOVIVO_TOKEN: ${OLHOVIVO_TOKEN:-}
       COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-30}
