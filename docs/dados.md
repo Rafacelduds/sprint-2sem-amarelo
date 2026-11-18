@@ -25,6 +25,10 @@ No GPS consolidado, `ta` é horário do GPS em UTC, não timestamp da coleta. `p
 
 ## Registro mínimo de uma execução ou novo conjunto
 
+O contrato do acervo de GTFS capturado pela US02 está em [gtfs.md](gtfs.md).
+Ele separa instante de captura, identidade dos bytes e cobertura do calendário.
+Capturar um arquivo hoje não comprova que ele era vigente no acervo GPS de maio.
+
 Documente junto do resultado ou no relatório da execução: fonte e versão (link/nome e hash quando disponível), captura e período coberto, esquema relevante, recorte/filtros, fuso, regras/parâmetros, comando e commit usados, saída e validações/limitações. Não preencha valores desconhecidos por suposição.
 
 Ao integrar uma nova fonte, acrescente aqui apenas o contrato e as restrições duradouras; mantenha os detalhes volumosos de cada execução junto dos artefatos. Para publicar um indicador, vincule a definição aprovada e os casos de validação que sustentam sua interpretação.

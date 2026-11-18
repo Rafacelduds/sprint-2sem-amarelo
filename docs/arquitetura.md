@@ -8,11 +8,12 @@ Navegador → web (React/Vite) → /api/* → API (FastAPI)
 Serviços de desenvolvimento: PostgreSQL e S3 via LocalStack
 ```
 
-O Vite encaminha `/api/*` para a API, removendo `/api`. A tela inicial consulta o health. A presença de PostgreSQL e S3 no ambiente não significa que já exista um pipeline de coleta, persistência operacional ou cálculo de indicadores.
+O Vite encaminha `/api/*` para a API, removendo `/api`. A tela inicial consulta o health. Os coletores Olho Vivo e GTFS rodam em processos próprios; processamento de indicadores ainda depende das respectivas US.
 
 | Local | Responsabilidade existente |
 | --- | --- |
 | [apps/api/src/api](../apps/api/src/api) | Aplicação FastAPI, configurações e base de acesso ao banco |
+| [apps/api/src/api/gtfs](../apps/api/src/api/gtfs) | Download GTFS, preservação S3, catálogo e seleção temporal |
 | [apps/api/migrations](../apps/api/migrations) | Migrações Alembic |
 | [apps/api/tests](../apps/api/tests) | Testes da API |
 | [apps/web/src](../apps/web/src) | Interface React/TypeScript e seus testes |
@@ -28,5 +29,10 @@ O contrato HTTP parte dos modelos e rotas da API. Ao alterá-lo, exporte o OpenA
 As configurações da API estão em [config.py](../apps/api/src/api/config.py); as variáveis de exemplo, em [.env.example](../.env.example). Valores locais de desenvolvimento não são credenciais de produção. Comandos de instalação, migrações e testes ficam centralizados no README.
 
 ## Evolução
+
+A US02 acrescenta `python -m api.gtfs`: o ZIP original vai para uma chave S3 por
+SHA-256; versões e capturas ficam no PostgreSQL. A coleta de posições grava a
+referência GTFS ou o motivo de ausência na mesma transação da posição. A integração
+depende da implementação de US01. Regras e limites em [gtfs.md](gtfs.md).
 
 A coleta Olho Vivo está em `apps/api/src/api/collection`, executada em processo separado. Persiste ciclos, uma inbox de respostas e posições deduplicadas no PostgreSQL; veja o [contrato da coleta](coleta.md). O acervo bruto imutável S3 continua sob responsabilidade da US12. Processamento analítico e publicação de indicadores ainda dependem das respectivas US. Escolhas com impacto em várias US precisam de justificativa em [decisoes.md](decisoes.md).

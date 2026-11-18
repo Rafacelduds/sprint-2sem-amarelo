@@ -131,3 +131,8 @@ O coletor Olho Vivo roda em processo separado, com intervalo configurável,
 posições em operação e garagens e persistência no PostgreSQL. Configure
 `OLHOVIVO_TOKEN` no `.env` privado e consulte [execução e contrato da coleta](docs/coleta.md).
 O serviço Docker é opcional, ativado pelo profile `coleta`.
+
+O coletor GTFS também roda em processo separado: configure `GTFS_SOURCE_URL`, aplique
+as migrações e execute `uv run --package amarelo-api python -m api.gtfs --once`.
+Sem `--once`, verifica a fonte diariamente e tenta novamente em até cinco minutos
+após falhas. Consulte [GTFS: configuração, armazenamento e associação temporal](docs/gtfs.md).
