@@ -11,6 +11,10 @@ Registre escolhas que afetem várias US, contratos, interpretação de indicador
 
 ## Como registrar a próxima
 
+### Proposta técnica da US01 — inbox e deduplicação
+
+Em 18/11/2026, a implementação de US01 propõe usar o PostgreSQL existente para ciclos, respostas e posições normalizadas, com uma transação por resposta e unicidade de prefixo/horário GPS. Isso mantém deduplicação entre reinícios e preserva conflitos nas respostas. A inbox é um ponto de integração com a US12, que implementa o acervo imutável no S3, evitando antecipar seu contrato. Campos identificadores ausentes ficam nulos e não são deduplicados por suposição. **Status: proposta implementada para revisão no PR da US01; aprovação de outro dev pendente.**
+
 Use ID sequencial e título. Em poucos parágrafos, informe **data e status** (proposta, aprovada, rejeitada ou substituída), **problema**, **escolha e motivo**, **consequências** e **fonte/aprovação** (pessoa, US, PR ou documento). Mencione alternativas apenas quando explicarem uma escolha relevante. Se substituir uma decisão, preserve o registro anterior e vincule a nova.
 
 Propostas aguardando validação devem continuar marcadas como propostas. As pendências iniciais de escopo e indicadores estão em [contexto.md](contexto.md#pendências-que-exigem-confirmação); não há definição de fórmulas ou backlog aprovado implícita nesta estrutura.

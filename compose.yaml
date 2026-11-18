@@ -55,6 +55,22 @@ services:
     ports:
       - "8000:8000"
 
+  collector:
+    profiles: [coleta]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: [".venv/bin/python", "-m", "api.collection"]
+    healthcheck:
+      disable: true
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
+      OLHOVIVO_TOKEN: ${OLHOVIVO_TOKEN:-}
+      COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-30}
+    depends_on:
+      api:
+        condition: service_healthy
+
   web:
     build:
       context: .
