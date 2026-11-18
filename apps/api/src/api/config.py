@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     s3_secret_key: str | None = None
     s3_bucket: str = "raw-data"
     s3_region: str = "us-east-1"
+    s3_restore_map: Path | None = None
     cors_origins: list[str] = Field(default=["http://localhost:5173"])
 
 

@@ -185,3 +185,6 @@ postman simulation run postman/simulations/live-map.sim.yaml --port 4010 --no-hi
 ```
 
 Para executar a API contra ela, defina no processo `OLHO_VIVO_BASE_URL=http://127.0.0.1:4010/olho-vivo/v2.1` e `OLHO_VIVO_TOKEN=synthetic`. Não use o token real na simulação.
+
+Backup diário, retenção dos sete dumps mais recentes, limpeza segura da inbox e
+recuperação em destinos vazios: [backup e restauração](docs/backup-e-restauracao.md).

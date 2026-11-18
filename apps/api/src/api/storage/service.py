@@ -21,10 +21,13 @@ async def exclusive(engine: AsyncEngine, key: int):
     async with engine.connect() as connection:
         if not await connection.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": key}):
             raise RuntimeError("processo já está em execução")
+        # O lock é de sessão e sobrevive ao commit; não reter transação durante o daemon.
+        await connection.commit()
         try:
             yield connection
         finally:
             await connection.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": key})
+            await connection.commit()
 
 
 class ArchiveService:
@@ -61,6 +64,8 @@ class ArchiveService:
                 )
             ).all()
         for snapshot in snapshots:
+            if snapshot.body is None:
+                raise ValueError("inbox sem bytes e sem referência arquivada")
             day = snapshot.collected_at.astimezone(UTC).strftime("%Y-%m-%d")
             endpoint = "posicao" if snapshot.company is None else f"garagem/{snapshot.company}"
             key = f"raw/olho-vivo/{endpoint}/{day}/{snapshot.id}.json.gz"

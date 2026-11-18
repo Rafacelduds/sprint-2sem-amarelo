@@ -3,6 +3,7 @@
 import base64
 import gzip
 import hashlib
+import json
 import shutil
 from collections.abc import Iterator
 from pathlib import Path
@@ -42,6 +43,7 @@ class S3Archive:
         secret_key: str | None = None,
     ):
         self.bucket = bucket
+        self.relocations: dict[str, ObjectRef] = {}
         self.client: Any = cast(Any, boto3).client(
             "s3",
             endpoint_url=endpoint,
@@ -64,6 +66,15 @@ class S3Archive:
     def reference(self, key: str) -> ObjectRef:
         head = self.client.head_object(Bucket=self.bucket, Key=key)
         metadata = dict[str, str](head["Metadata"])
+        # Compatibilidade com os ZIPs imutáveis já escritos pela US02.
+        if key.startswith("gtfs/") and "original-sha256" not in metadata:
+            metadata.update(
+                {
+                    "original-sha256": metadata["sha256"],
+                    "stored-sha256": metadata["sha256"],
+                    "original-size": str(head["ContentLength"]),
+                }
+            )
         return ObjectRef(
             bucket=self.bucket,
             key=key,
@@ -148,11 +159,16 @@ class S3Archive:
             return reference
 
     def download(self, reference: ObjectRef, destination: Path) -> None:
-        if reference.bucket != self.bucket:
+        physical = self.relocations.get(self.identity(reference), reference)
+        if (
+            physical.bucket != self.bucket
+            or physical.sha256 != reference.sha256
+            or physical.stored_sha256 != reference.stored_sha256
+        ):
             raise ValueError("bucket inesperado")
-        options: dict[str, str] = {"Bucket": self.bucket, "Key": reference.key}
-        if reference.version_id:
-            options["VersionId"] = reference.version_id
+        options: dict[str, str] = {"Bucket": self.bucket, "Key": physical.key}
+        if physical.version_id:
+            options["VersionId"] = physical.version_id
         response = self.client.get_object(**options)
         try:
             with destination.open("xb") as output:
@@ -183,3 +199,52 @@ class S3Archive:
         for page in pages.paginate(Bucket=self.bucket, Prefix=prefix):
             for item in page.get("Contents", []):
                 yield self.reference(str(item["Key"]))
+
+    @staticmethod
+    def identity(ref: ObjectRef) -> str:
+        return json.dumps([ref.bucket, ref.key, ref.version_id], separators=(",", ":"))
+
+    def replicate(self, source: "S3Archive", ref: ObjectRef) -> ObjectRef:
+        """Preserva os bytes armazenados e seus metadados, inclusive gzip."""
+        with TemporaryDirectory(prefix="amarelo-copy-") as temporary:
+            path = Path(temporary) / "object"
+            source.download(ref, path)
+            tags = dict(ref.metadata)
+            tags.update(
+                {
+                    "original-sha256": ref.sha256,
+                    "stored-sha256": ref.stored_sha256,
+                    "original-size": str(ref.size),
+                }
+            )
+            try:
+                with path.open("rb") as body:
+                    result = self.client.put_object(
+                        Bucket=self.bucket,
+                        Key=ref.key,
+                        Body=body,
+                        ContentLength=ref.stored_size,
+                        ContentType=ref.content_type,
+                        ContentEncoding=ref.encoding,
+                        Metadata=tags,
+                        IfNoneMatch="*",
+                        ChecksumSHA256=base64.b64encode(bytes.fromhex(ref.stored_sha256)).decode(
+                            "ascii"
+                        ),
+                    )
+                copied = ref.model_copy(
+                    update={
+                        "bucket": self.bucket,
+                        "version_id": result.get("VersionId"),
+                    }
+                )
+            except ClientError as exc:
+                if exc.response.get("Error", {}).get("Code") not in ("PreconditionFailed", "412"):
+                    raise
+                copied = self.reference(ref.key)
+                if copied.model_dump(exclude={"bucket", "version_id"}) != ref.model_dump(
+                    exclude={"bucket", "version_id"}
+                ):
+                    raise CollisionError(ref.key) from None
+            self.verify(copied)
+            return copied
