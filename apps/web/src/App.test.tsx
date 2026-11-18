@@ -5,19 +5,23 @@ import {
   render,
   screen,
   within,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useEffect } from "react";
 import App from "./App";
 import type { Vehicle } from "./api/positions";
 import type { Bounds } from "./network";
+import type { RouteCollection } from "./api/network";
 
 vi.mock("./components/BusMap", () => ({
   default: function MockBusMap({
     vehicles,
+    routes,
     onBounds,
   }: {
     vehicles: Vehicle[];
+    routes: RouteCollection[];
     onBounds: (b: Bounds) => void;
   }) {
     useEffect(
@@ -27,6 +31,13 @@ vi.mock("./components/BusMap", () => ({
     return (
       <div>
         <div data-testid="map">{vehicles.map((v) => v.id).join(",")}</div>
+        <div data-testid="routes">
+          {routes
+            .flatMap((route) =>
+              route.features.map((feature) => feature.properties.line_id),
+            )
+            .join(",")}
+        </div>
         <button
           onClick={() =>
             onBounds({ north: -23.5, south: -23.555, east: -46, west: -47 })
@@ -105,12 +116,119 @@ function respond(age = 0) {
     return new Response(JSON.stringify(snapshot(age)));
   });
 }
+
+function respondWithRoutes() {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+    const u = String(url);
+    if (u.includes("/network/catalog"))
+      return new Response(JSON.stringify(network));
+    if (u.includes("/network/routes/")) {
+      const id = Number(new URL(u, "http://test").pathname.split("/").pop());
+      const line = snapshot().lines.find((line) => line.id === id)!;
+      const route: RouteCollection = {
+        type: "FeatureCollection",
+        version: network.version,
+        captured_at: "2026-11-18T12:00:00Z",
+        synthetic: true,
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "MultiLineString",
+              coordinates: [
+                [
+                  [-46.63, -23.55],
+                  [-46.64, -23.56],
+                ],
+              ],
+            },
+            properties: {
+              line_id: id,
+              label: line.label,
+              direction: line.direction,
+              destination: line.destination,
+              route_id: `synthetic-${line.label}`,
+              direction_id: String(line.direction),
+              match_source: "Fixture sintética",
+            },
+          },
+        ],
+      };
+      return new Response(JSON.stringify(route));
+    }
+    return new Response(JSON.stringify(snapshot()));
+  });
+}
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
 describe("Rede pública", () => {
+  it("preserves loaded routes when area filters keep the same effective IDs", async () => {
+    const fetch = respondWithRoutes();
+    render(<App />);
+    await screen.findByText("Atualização ativa");
+    fireEvent.click(screen.getByRole("button", { name: /5015-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/),
+    );
+    const routeCalls = () =>
+      fetch.mock.calls.filter(([url]) =>
+        String(url).includes("/network/routes/"),
+      ).length;
+    expect(routeCalls()).toBe(2);
+    fireEvent.click(screen.getByLabelText(/2 · Norte/));
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/);
+    fireEvent.click(screen.getByLabelText(/8 · Oeste/));
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/);
+    fireEvent.click(screen.getByLabelText(/8 · Oeste/));
+    fireEvent.click(screen.getByLabelText(/2 · Norte/));
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/);
+    expect(routeCalls()).toBe(2);
+  });
+  it("preserves routes when changing sense leaves the effective IDs unchanged", async () => {
+    respondWithRoutes();
+    render(<App />);
+    await screen.findByText("Atualização ativa");
+    fireEvent.click(screen.getByRole("button", { name: /701A-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("routes")).toHaveTextContent(/^2$/),
+    );
+    fireEvent.change(screen.getByLabelText("Sentido da linha 701A-10"), {
+      target: { value: "1" },
+    });
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^2$/);
+    fireEvent.change(screen.getByLabelText("Sentido da linha 701A-10"), {
+      target: { value: "both" },
+    });
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^2$/);
+  });
+  it("removes excluded geometry and restores routes when effective IDs change", async () => {
+    respondWithRoutes();
+    render(<App />);
+    await screen.findByText("Atualização ativa");
+    fireEvent.click(screen.getByRole("button", { name: /5015-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/),
+    );
+    fireEvent.change(screen.getByLabelText("Sentido da linha 5015-10"), {
+      target: { value: "2" },
+    });
+    expect(screen.getByTestId("routes")).not.toHaveTextContent(/(^|,)1(,|$)/);
+    await waitFor(() =>
+      expect(screen.getByTestId("routes")).toHaveTextContent(/^11$/),
+    );
+    fireEvent.click(screen.getByLabelText(/8 · Oeste/));
+    expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+    fireEvent.click(screen.getByLabelText(/8 · Oeste/));
+    await waitFor(() =>
+      expect(screen.getByTestId("routes")).toHaveTextContent(/^11$/),
+    );
+    fireEvent.click(screen.getByLabelText("Remover linha 5015-10"));
+    expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+  });
+
   it("starts with the network, accumulates lines and selects senses", async () => {
     respond();
     render(<App />);

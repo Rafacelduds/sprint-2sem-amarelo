@@ -142,14 +142,11 @@ export default function App() {
   }, [routeKey, catalog?.version, routeRetry]);
   function changeSelection(value: Selection) {
     setSelection(value);
-    setRoutes([]);
-    setRouteMissing([]);
   }
   function toggleArea(id: string) {
     setAreas((current) =>
       current.includes(id) ? current.filter((a) => a !== id) : [...current, id],
     );
-    setRoutes([]);
   }
   const activeRoutes = useMemo(
     () =>

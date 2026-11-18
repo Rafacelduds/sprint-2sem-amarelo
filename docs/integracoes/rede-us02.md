@@ -23,6 +23,8 @@ As cores da paleta vêm do [padrão cromático SPTrans DV.01.001.1-2-R0](https:/
 - `GET /network/catalog`: status `ready` ou `unavailable`, versão, captura, procedência, marcação sintética, áreas com cores e correspondências das linhas. Sem fonte válida, retorna áreas oficiais mas nenhuma correspondência inventada.
 - `GET /network/routes/{line_id}?version={hash}`: GeoJSON FeatureCollection somente daquele código/sentido. Retorna 404 quando o percurso ou a versão solicitada não está disponível.
 
+Mudanças nos filtros preservam os percursos carregados que continuam compatíveis com a versão e os IDs efetivos selecionados. Marcar a área de uma linha já selecionada ou alternar ambos/único sentido sem mudar os IDs não apaga os traçados nem exige novas consultas. Percursos excluídos são retirados da visualização imediatamente.
+
 O catálogo é consultado a cada minuto pela tela. A geometria é carregada somente para linhas selecionadas e ligada à versão do catálogo; respostas de seleções anteriores são abortadas/ignoradas. O cache de arquivo verifica tamanho e mtime. Para atualizar com segurança, publicar um novo arquivo completo e trocar seu nome atomicamente.
 
 ## Desenvolvimento sem a US02
