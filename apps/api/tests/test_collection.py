@@ -14,6 +14,7 @@ from pydantic_settings import SettingsConfigDict
 
 class IsolatedSettings(CollectionSettings):
     model_config = SettingsConfigDict(env_file=None, extra="ignore")
+    collection_max_retries: int = 0
 
 
 @pytest.mark.parametrize("interval", [14, 61])
@@ -86,11 +87,11 @@ async def test_cycle_collects_road_and_every_garage_and_persists_empty_response(
     source.company_codes.return_value = [2, 8]
     collector = Collector(source, store, IsolatedSettings())
     assert await collector.cycle(datetime.now(UTC)) is True
-    assert source.snapshot.await_args_list[0].args == ()
+    assert source.snapshot.await_args_list[0].args == (None,)
     assert source.snapshot.await_args_list[1].args == (2,)
     assert source.snapshot.await_args_list[2].args == (8,)
     assert store.save.await_count == 3
-    store.finish.assert_awaited_once_with(store.start.return_value, "success")
+    store.finish.assert_awaited_once_with(store.start.return_value, "success", None)
 
 
 @pytest.mark.asyncio
