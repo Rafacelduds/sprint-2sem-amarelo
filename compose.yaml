@@ -58,6 +58,26 @@ services:
     ports:
       - "8000:8000"
 
+  collector:
+    profiles: [coleta]
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: [".venv/bin/python", "-m", "api.collection"]
+    healthcheck:
+      disable: true
+    environment:
+      PYTHONPATH: /workspace/apps/api/src
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
+      OLHOVIVO_TOKEN: ${OLHOVIVO_TOKEN:-}
+      COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-30}
+      COLLECTION_TIMEOUT_SECONDS: ${COLLECTION_TIMEOUT_SECONDS:-5}
+      COLLECTION_ALERT_WEBHOOK: ${COLLECTION_ALERT_WEBHOOK:-}
+    depends_on:
+      api:
+        condition: service_healthy
+
   web:
     build:
       context: .

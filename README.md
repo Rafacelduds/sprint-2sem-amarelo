@@ -126,9 +126,10 @@ infra/
 
 ## Coleta de dados
 
-Os requisitos de coleta e integração de dados do projeto continuam vigentes.
-A implementação da coleta será definida pelo Kayan. O setup atual não inclui
-uma implementação de coleta nem um serviço correspondente no Docker Compose.
+O coletor Olho Vivo roda em processo separado, com intervalo configurável,
+posições em operação e garagens e persistência no PostgreSQL. Configure
+`OLHOVIVO_TOKEN` no `.env` privado e consulte [execução e contrato da coleta](docs/coleta.md).
+O serviço Docker é opcional, ativado pelo profile `coleta`.
 
 ## Mapa ao vivo (US22)
 
@@ -139,7 +140,7 @@ Execute API e frontend pelos comandos de desenvolvimento acima. O Vite usa a API
 - `GET /vehicles/positions` é público. `line_id` opcional filtra um sentido pelo código interno SPTrans. `lines` mantém o catálogo disponível no snapshot.
 - A tela consulta a cada 15 segundos, mostra coleta e GPS separadamente e oculta veículos após 60 segundos sem coleta recente. GPS antigo ou sem horário fica cinza; não significa viagem cancelada.
 - O backend compartilha um snapshot em memória por processo, coalescendo chamadas concorrentes e esperando 15 segundos entre tentativas. Em falha mantém a data original; sem snapshot retorna 503.
-- Esta consulta direta é um adaptador para a US22; não implementa histórico, redundância ou persistência da US01. Quando o coletor estiver integrado, poderá alimentar o mesmo contrato. Múltiplos workers exigem cache compartilhado antes de escalar.
+- Esta consulta direta é um adaptador para a US22; não implementa histórico, redundância ou persistência da US01. O coletor US01/US29 já existe em processo separado; conectá-lo a este endpoint é uma etapa posterior que deve preservar o contrato. Múltiplos workers exigem cache compartilhado antes de escalar.
 - A tela abre na visão geral da rede, com bolhas neutras de 24–32 px e contagem de veículos. Os agrupamentos espaciais (Supercluster) respeitam os filtros e se dividem conforme o zoom; clicar amplia a região. No zoom máximo, veículos coincidentes abrem uma lista paginada de dez itens. Filtros por área e seleção acumulativa de linhas permitem comparar ambos os sentidos ou restringir cada linha. O resumo considera os filtros dentro da área visível, enquanto o total da rede fica como referência. A câmera só é enquadrada a pedido do usuário.
 - Cores identificam áreas oficiais com correspondência comprovada; linhas sem área confirmada ficam em cinza. O catálogo versionado da US02 habilita os percursos das linhas selecionadas. O traçado tem 3 px e 40% de opacidade, com sentido 1 contínuo e 2 tracejado, abaixo dos veículos e sem interceptar cliques. Sem esse artefato, as posições continuam funcionando e a tela explica a dependência. Veja o [contrato de integração](docs/integracoes/rede-us02.md).
 - GPS recente significa até 60 segundos no relógio de referência da fonte; horário inválido, ausente ou futuro é desconhecido. O percentual usa todos os veículos do recorte como denominador. O índice espacial é reconstruído apenas quando as posições ou os filtros mudam; movimentos e zoom consultam o mesmo índice. Marcadores são reutilizados, popups são criados ao clicar e a lista só é montada quando aberta, em páginas de 100 veículos.

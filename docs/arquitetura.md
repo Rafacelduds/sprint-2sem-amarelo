@@ -9,7 +9,7 @@ Navegador → web (React/Vite) → /api/* → API (FastAPI)
 Serviços de desenvolvimento: PostgreSQL e S3 via LocalStack
 ```
 
-O Vite encaminha `/api/*` para a API, removendo `/api`. A tela inicial exibe posições com Leaflet, filtro de linha/sentido e expiração de coleta em 60 segundos. A presença de PostgreSQL e S3 no ambiente não significa que já exista um pipeline de coleta, persistência operacional ou cálculo de indicadores.
+O Vite encaminha `/api/*` para a API, removendo `/api`. A tela inicial exibe posições com Leaflet, filtro de linha/sentido e expiração de coleta em 60 segundos. A coleta operacional US01/US29 roda em processo separado e persiste no PostgreSQL, conforme o contrato abaixo. O mapa ainda consulta diretamente o Olho Vivo; processamento analítico e cálculo de indicadores continuam dependentes das respectivas US.
 
 | Local | Responsabilidade existente |
 | --- | --- |
@@ -38,4 +38,4 @@ O mapa usa Supercluster sobre as posições já filtradas. Grupos neutros repres
 
 ## Evolução
 
-Coleta, processamento e publicação de indicadores ainda precisam ser definidos pelas US e suas dependências. Ao implementar, atualize este mapa com os componentes e fluxos que realmente existirem. Escolhas de armazenamento, contratos entre componentes ou regras com impacto em várias US precisam de justificativa em [decisoes.md](decisoes.md).
+A coleta Olho Vivo está em `apps/api/src/api/collection`, executada em processo separado. Persiste ciclos, uma inbox de respostas e posições deduplicadas no PostgreSQL; veja o [contrato da coleta](coleta.md). O acervo bruto imutável S3 continua sob responsabilidade da US12. Processamento analítico e publicação de indicadores ainda dependem das respectivas US. Escolhas com impacto em várias US precisam de justificativa em [decisoes.md](decisoes.md).

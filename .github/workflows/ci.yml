@@ -8,6 +8,21 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: amarelo_test
+          POSTGRES_USER: amarelo
+          POSTGRES_PASSWORD: test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U amarelo -d amarelo_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://amarelo:test-only@localhost:5432/amarelo_test
+      TEST_DATABASE_URL: postgresql+asyncpg://amarelo:test-only@localhost:5432/amarelo_test
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -15,6 +30,7 @@ jobs:
           python-version: '3.13'
           enable-cache: true
       - run: uv sync --all-packages --all-groups --frozen
+      - run: uv run --package amarelo-api alembic -c apps/api/alembic.ini upgrade head
       - run: uv run pytest
       - run: uv run ruff check .
       - run: uv run pyright
