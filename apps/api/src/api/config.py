@@ -1,17 +1,20 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parents[2] / ".env", extra="ignore"
+    )
 
     app_name: str = "Sprint Amarelo API"
     database_url: str = "postgresql+asyncpg://amarelo:amarelo@localhost:5432/amarelo"
-    s3_endpoint_url: str = "http://localhost:4566"
-    s3_access_key: str = "test"
-    s3_secret_key: str = "test"
+    s3_endpoint_url: str | None = None
+    s3_access_key: str | None = None
+    s3_secret_key: str | None = None
     s3_bucket: str = "raw-data"
     s3_region: str = "us-east-1"
     cors_origins: list[str] = Field(default=["http://localhost:5173"])

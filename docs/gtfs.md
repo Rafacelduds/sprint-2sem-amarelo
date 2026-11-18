@@ -8,10 +8,13 @@ ambas já integradas à `main`. A revisão `20261118_0003` une os dois históric
 publicados de migração; bancos que já aplicaram uma das linhas podem avançar para
 o mesmo `head`, sem reescrever versões nem remover posições existentes.
 
+A revisão `20261118_0004` concilia esse histórico com a US12 já integrada,
+preservando as revisões publicadas e as tabelas de brutos.
+
 ## Configuração e execução
 
-Siga a instalação do [README](../README.md) e configure o `.env` privado a partir
-de [.env.example](../.env.example). Para a captura automática, `GTFS_SOURCE_URL`
+Siga a instalação do [README](../README.md) e configure `apps/api/.env` a partir
+de [apps/api/.env.example](../apps/api/.env.example). Para a captura automática, `GTFS_SOURCE_URL`
 recebe o link direto do ZIP, não uma página de login nem o caminho do arquivo local:
 
 ```dotenv
@@ -64,7 +67,7 @@ Como alternativa dentro da imagem da API, depois de construí-la e aplicar as
 migrações, execute um container independente (não inicia o servidor HTTP):
 
 ```bash
-docker compose run --rm --no-deps --env-from-file .env -e PYTHONPATH=/workspace/apps/api/src api .venv/bin/python -m api.gtfs --once
+docker compose run --rm --no-deps --env-from-file apps/api/.env -e PYTHONPATH=/workspace/apps/api/src api .venv/bin/python -m api.gtfs --once
 ```
 
 Nesse container, mantenha `postgres`/`s3` como hosts. Não há serviço GTFS contínuo

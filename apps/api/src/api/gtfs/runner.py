@@ -9,6 +9,7 @@ import httpx
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from api.config import Settings
 from api.gtfs.catalog import Catalog
 from api.gtfs.source import GtfsError, copy_local, download, inspect_feed
 from api.gtfs.storage import Archive
@@ -17,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class GtfsSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=Settings.model_config.get("env_file"), extra="ignore"
+    )
     gtfs_source_url: SecretStr = SecretStr("")
     gtfs_source_id: str = Field(default="sptrans", pattern=r"^[a-z0-9_-]{1,64}$")
     gtfs_interval_seconds: int = Field(default=86400, ge=60, le=604800)

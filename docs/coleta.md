@@ -4,7 +4,10 @@ Implementação da [US01](https://trello.com/c/MuuQFXEX) e da [US29](https://tre
 
 ## Configuração e execução
 
-Mantenha um `.env` privado na raiz, organizado como o `.env.example`. O Compose lê esse arquivo para interpolação e passa ao coletor somente suas variáveis; a execução Python também parte da raiz. Nunca use `VITE_*` para credenciais: esses valores podem chegar ao navegador.
+Mantenha `apps/api/.env` privado, organizado como `apps/api/.env.example`.
+Use os dois `--env-file` do README nos comandos Compose. O coletor aceita
+`CHAVE_API_OLHO_VIVO` e o nome anterior `OLHOVIVO_TOKEN`; se ambos existirem,
+`CHAVE_API_OLHO_VIVO` tem precedência. Nunca use `VITE_*` para credenciais.
 
 | Variável | Uso |
 | --- | --- |

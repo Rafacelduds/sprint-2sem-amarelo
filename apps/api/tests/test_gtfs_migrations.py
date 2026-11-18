@@ -30,7 +30,7 @@ async def alembic(database_url: str, action: str, target: str | None = None) -> 
     assert process.returncode == 0, f"Falha na migração: {action} {target or ''}"
 
 
-@pytest.mark.parametrize("starting_revision", ["7ad978e014e5", "20261118_0002"])
+@pytest.mark.parametrize("starting_revision", ["7ad978e014e5", "20261118_0002", "b12000000001"])
 async def test_upgrade_from_each_published_branch_preserves_positions(
     starting_revision: str,
 ) -> None:
@@ -77,7 +77,7 @@ async def test_upgrade_from_each_published_branch_preserves_positions(
         await alembic(target_url, "check")
         async with engine.connect() as connection:
             assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-                "20261118_0003"
+                "20261118_0004"
             )
             row = (
                 await connection.execute(

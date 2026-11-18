@@ -26,7 +26,10 @@ O Vite encaminha `/api/*` para a API, removendo `/api`. A tela inicial consulta 
 
 O contrato HTTP parte dos modelos e rotas da API. Ao alterá-lo, exporte o OpenAPI e regenere o cliente conforme o [README](../README.md#openapi-e-cliente-typescript); não edite manualmente os arquivos gerados. O `openapi.json` é um artefato local ignorado pelo Git.
 
-As configurações da API estão em [config.py](../apps/api/src/api/config.py); as variáveis de exemplo, em [.env.example](../.env.example). Valores locais de desenvolvimento não são credenciais de produção. Comandos de instalação, migrações e testes ficam centralizados no README.
+As configurações privadas ficam em `apps/api/.env`, com exemplo em
+[`apps/api/.env.example`](../apps/api/.env.example); as públicas do Vite ficam em
+`apps/web/.env`. Em AWS, o armazenamento aceita a identidade IAM do processo.
+Comandos de instalação, migrações e testes ficam centralizados no README.
 
 ## Evolução
 
@@ -34,5 +37,8 @@ A US02 acrescenta `python -m api.gtfs`: o ZIP original vai para uma chave S3 por
 SHA-256; versões e capturas ficam no PostgreSQL. A coleta de posições grava a
 referência GTFS ou o motivo de ausência na mesma transação da posição. A integração
 depende da implementação de US01. Regras e limites em [gtfs.md](gtfs.md).
+O arquivador da US12 consome a inbox em processo separado e grava JSON.gz imutável,
+catálogo de objetos e manifestos de proveniência; consulte
+[armazenamento](armazenamento-e-proveniencia.md).
 
 A coleta Olho Vivo está em `apps/api/src/api/collection`, executada em processo separado. Persiste ciclos, uma inbox de respostas e posições deduplicadas no PostgreSQL; veja o [contrato da coleta](coleta.md). O acervo bruto imutável S3 continua sob responsabilidade da US12. Processamento analítico e publicação de indicadores ainda dependem das respectivas US. Escolhas com impacto em várias US precisam de justificativa em [decisoes.md](decisoes.md).
