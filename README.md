@@ -1,5 +1,8 @@
 # Sprint Amarelo
 
+Contexto compartilhado, arquitetura, dados e fluxo de contribuição estão no
+[índice da documentação](docs/README.md). Para começar a desenvolver, siga o setup abaixo.
+
 Setup mínimo com uma API FastAPI e uma aplicação React/Vite que exibe o resultado
 de `GET /health`.
 
