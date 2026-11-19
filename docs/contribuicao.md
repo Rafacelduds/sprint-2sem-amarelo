@@ -10,6 +10,8 @@ Fluxo informado por Victor em 18/11/2026. Backlog e andamento ficam no [Trello d
 6. Aplique as correções solicitadas por outro desenvolvedor e atualize a validação.
 7. Após revisão e integração concluídas por outro desenvolvedor, mova o trabalho concluído para **Done**. Uma história só está concluída com todas as suas tasks prontas; o aceite do PO na review acadêmica continua sendo um registro próprio.
 
+Ao trabalhar com IA, consulte [Trabalhar com IA](trabalho-com-ia.md) para desenvolver pedidos e reavaliar tentativas sem progresso quando necessário, sem impor planejamento adicional a toda tarefa.
+
 ## Branch e PR
 
 **Uma branch e um PR por US.** Sugestão de nome: `us01-descricao-curta`, preservando o ID existente. Revisão, pedidos de correção, merge e fechamento do PR ficam com **outro desenvolvedor**. O autor implementa e responde à revisão.

@@ -12,6 +12,7 @@ Comece pelo [README do projeto](../README.md) para instalar, executar e verifica
 | Preservar brutos, importar arquivos e registrar proveniência | [Armazenamento](armazenamento-e-proveniencia.md) |
 | Operar backup diário e recuperar a plataforma | [Backup e restauração](backup-e-restauracao.md) |
 | Fluxo US → código → revisão → entrega | [Contribuição](contribuicao.md) |
+| Formular pedidos, planejar com IA e tratar ambiguidades | [Trabalhar com IA](trabalho-com-ia.md) |
 | Por que uma escolha foi feita ou ainda está aberta | [Decisões](decisoes.md) |
 
 ## O que manter em cada lugar
