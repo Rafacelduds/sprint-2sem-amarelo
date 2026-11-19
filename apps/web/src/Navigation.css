@@ -1,0 +1,56 @@
+.site-navigation {
+  min-height: 58px;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #dbe4df;
+  background: #fff;
+}
+.site-navigation > span {
+  font-weight: 700;
+  color: #164d46;
+}
+.site-navigation small {
+  font-size: 11px;
+  font-weight: 400;
+  margin-left: 7px;
+  color: #576b61;
+}
+.site-navigation > div {
+  display: flex;
+  gap: 8px;
+}
+.site-navigation a {
+  padding: 9px 12px;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.site-navigation a[aria-current="page"] {
+  background: #e7f0eb;
+  color: #164d46;
+  font-weight: 650;
+}
+.site-navigation ~ .map-app {
+  height: calc(100dvh - 58px);
+}
+.site-navigation ~ .map-app .explorer {
+  max-height: calc(100dvh - 168px);
+}
+@media (max-width: 600px) {
+  .site-navigation {
+    padding: 9px 12px;
+  }
+  .site-navigation > span {
+    font-size: 13px;
+  }
+  .site-navigation small {
+    display: none;
+  }
+  .site-navigation a {
+    font-size: 12px;
+    padding: 9px 7px;
+  }
+}

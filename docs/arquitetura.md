@@ -42,6 +42,16 @@ O mapa usa Supercluster sobre as posições já filtradas. Grupos neutros repres
 
 ## Evolução
 
+A US05 acrescenta `python -m api.documents register` e a tabela
+`official_documents`, ligada ao catálogo técnico `raw_objects` da US12. Cadastro
+controlado preserva o PDF no S3 e metadados documentais no PostgreSQL, com
+deduplicação por conteúdo. Oferece listagem paginada em
+`/documents`, detalhes em `/documents/{identity}` e original verificado em
+`/documents/{identity}/pdf`. A página React `#acervo` usa esse contrato pelo
+cliente gerado, com filtros, paginação e procedência; o mapa permanece em
+`MapPage.tsx`, acessível por `#mapa`. Não há escrita HTTP. Contrato e limites
+em [acervo documental](acervo-documental.md).
+
 A US13 acrescenta `python -m api.reliability`, separado da API, para consolidar
 metadados de coleta/GTFS e manifestos de programação em relatórios diários no
 PostgreSQL. A rota pública `/reports/reliability/{day}` só lê o derivado publicado.
