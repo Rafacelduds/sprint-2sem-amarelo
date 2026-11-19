@@ -5,6 +5,7 @@ from api.backup import models as backup_models  # noqa: F401
 from api.collection import models  # noqa: F401 — registra tabelas no metadata
 from api.config import get_settings
 from api.db.base import Base
+from api.exports import models as exports_models  # noqa: F401
 from api.gtfs import models as gtfs_models  # noqa: F401 — registra tabelas no metadata
 from api.storage import models as storage_models  # noqa: F401
 from sqlalchemy import pool

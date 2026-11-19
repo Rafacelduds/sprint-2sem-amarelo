@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from api.config import get_settings
+from api.exports.routes import router as exports_router
 from api.live import router as live_router
 from api.network import router as network_router
 
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
 
     application.include_router(live_router)
     application.include_router(network_router)
+    application.include_router(exports_router)
     return application
 
 

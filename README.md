@@ -191,3 +191,6 @@ Para executar a API contra ela, defina no processo `OLHO_VIVO_BASE_URL=http://12
 
 Backup diário, retenção dos sete dumps mais recentes, limpeza segura da inbox e
 recuperação em destinos vazios: [backup e restauração](docs/backup-e-restauracao.md).
+
+Download público diário dos brutos em Parquet, dicionário, licença e operação do
+publicador: [publicação dos brutos](docs/publicacao-brutos.md).
