@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses } from './types.gen';
+import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DocumentDetailsDocumentsIdentityGetData, DocumentDetailsDocumentsIdentityGetErrors, DocumentDetailsDocumentsIdentityGetResponses, DocumentPdfDocumentsIdentityPdfGetData, DocumentPdfDocumentsIdentityPdfGetErrors, DocumentPdfDocumentsIdentityPdfGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses, SearchDocumentsDocumentsGetData, SearchDocumentsDocumentsGetErrors, SearchDocumentsDocumentsGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -112,6 +112,38 @@ export const downloadExportsRawDayDownloadGet = <ThrowOnError extends boolean = 
 export const dailyReliabilityReportsReliabilityDayGet = <ThrowOnError extends boolean = false>(options: Options<DailyReliabilityReportsReliabilityDayGetData, ThrowOnError>) => {
     return (options.client ?? client).get<DailyReliabilityReportsReliabilityDayGetResponses, DailyReliabilityReportsReliabilityDayGetErrors, ThrowOnError>({
         url: '/reports/reliability/{day}',
+        ...options
+    });
+};
+
+/**
+ * Search Documents
+ *
+ * Datas inclusivas; cadastro usa o dia civil de São Paulo. Nulos não casam com período.
+ */
+export const searchDocumentsDocumentsGet = <ThrowOnError extends boolean = false>(options?: Options<SearchDocumentsDocumentsGetData, ThrowOnError>) => {
+    return (options?.client ?? client).get<SearchDocumentsDocumentsGetResponses, SearchDocumentsDocumentsGetErrors, ThrowOnError>({
+        url: '/documents',
+        ...options
+    });
+};
+
+/**
+ * Document Details
+ */
+export const documentDetailsDocumentsIdentityGet = <ThrowOnError extends boolean = false>(options: Options<DocumentDetailsDocumentsIdentityGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<DocumentDetailsDocumentsIdentityGetResponses, DocumentDetailsDocumentsIdentityGetErrors, ThrowOnError>({
+        url: '/documents/{identity}',
+        ...options
+    });
+};
+
+/**
+ * Document Pdf
+ */
+export const documentPdfDocumentsIdentityPdfGet = <ThrowOnError extends boolean = false>(options: Options<DocumentPdfDocumentsIdentityPdfGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<DocumentPdfDocumentsIdentityPdfGetResponses, DocumentPdfDocumentsIdentityPdfGetErrors, ThrowOnError>({
+        url: '/documents/{identity}/pdf',
         ...options
     });
 };
