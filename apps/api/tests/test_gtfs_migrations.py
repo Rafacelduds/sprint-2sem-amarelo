@@ -8,6 +8,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -78,9 +80,11 @@ async def test_upgrade_from_each_published_branch_preserves_positions(
             )
         await alembic(target_url, "upgrade", "head")
         await alembic(target_url, "check")
+        config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+        expected_head = ScriptDirectory.from_config(config).get_current_head()
         async with engine.connect() as connection:
             assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-                "20261119_0006"
+                expected_head
             )
             row = (
                 await connection.execute(

@@ -15,6 +15,7 @@ O Vite encaminha `/api/*` para a API, removendo `/api`. A tela inicial exibe pos
 | --- | --- |
 | [apps/api/src/api](../apps/api/src/api) | Aplicação FastAPI, configurações e base de acesso ao banco |
 | [apps/api/src/api/gtfs](../apps/api/src/api/gtfs) | Download GTFS, preservação S3, catálogo e seleção temporal |
+| [apps/api/src/api/exports](../apps/api/src/api/exports) | Publicação diária dos brutos e HTTP de download; geração em processo separado |
 | [apps/api/migrations](../apps/api/migrations) | Migrações Alembic |
 | [apps/api/tests](../apps/api/tests) | Testes da API |
 | [apps/web/src](../apps/web/src) | Interface React/TypeScript e seus testes |
