@@ -77,6 +77,82 @@ export type CatalogLine = {
 };
 
 /**
+ * DocumentPage
+ */
+export type DocumentPage = {
+    /**
+     * Items
+     */
+    items: Array<DocumentView>;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Limit
+     */
+    limit: number;
+    /**
+     * Offset
+     */
+    offset: number;
+};
+
+/**
+ * DocumentView
+ */
+export type DocumentView = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Agency
+     */
+    agency?: string | null;
+    /**
+     * Document Type
+     */
+    document_type: 'contrato' | 'aditivo' | 'procedimento' | 'ficha_indicador';
+    /**
+     * Document Date
+     */
+    document_date?: string | null;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Catalogued At
+     */
+    catalogued_at: string;
+    /**
+     * Original Filename
+     */
+    original_filename: string;
+    /**
+     * Sha256
+     */
+    sha256: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Pdf Url
+     */
+    pdf_url: string;
+};
+
+/**
  * Gap
  */
 export type Gap = {
@@ -697,3 +773,133 @@ export type DailyReliabilityReportsReliabilityDayGetResponses = {
 };
 
 export type DailyReliabilityReportsReliabilityDayGetResponse = DailyReliabilityReportsReliabilityDayGetResponses[keyof DailyReliabilityReportsReliabilityDayGetResponses];
+
+export type SearchDocumentsDocumentsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Document Type
+         */
+        document_type?: 'contrato' | 'aditivo' | 'procedimento' | 'ficha_indicador' | null;
+        /**
+         * Date From
+         */
+        date_from?: string | null;
+        /**
+         * Date To
+         */
+        date_to?: string | null;
+        /**
+         * Date Field
+         */
+        date_field?: 'document_date' | 'catalogued_at';
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/documents';
+};
+
+export type SearchDocumentsDocumentsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Catálogo indisponível
+     */
+    503: unknown;
+};
+
+export type SearchDocumentsDocumentsGetError = SearchDocumentsDocumentsGetErrors[keyof SearchDocumentsDocumentsGetErrors];
+
+export type SearchDocumentsDocumentsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocumentPage;
+};
+
+export type SearchDocumentsDocumentsGetResponse = SearchDocumentsDocumentsGetResponses[keyof SearchDocumentsDocumentsGetResponses];
+
+export type DocumentDetailsDocumentsIdentityGetData = {
+    body?: never;
+    path: {
+        /**
+         * Identity
+         */
+        identity: string;
+    };
+    query?: never;
+    url: '/documents/{identity}';
+};
+
+export type DocumentDetailsDocumentsIdentityGetErrors = {
+    /**
+     * Documento inexistente
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Catálogo indisponível
+     */
+    503: unknown;
+};
+
+export type DocumentDetailsDocumentsIdentityGetError = DocumentDetailsDocumentsIdentityGetErrors[keyof DocumentDetailsDocumentsIdentityGetErrors];
+
+export type DocumentDetailsDocumentsIdentityGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocumentView;
+};
+
+export type DocumentDetailsDocumentsIdentityGetResponse = DocumentDetailsDocumentsIdentityGetResponses[keyof DocumentDetailsDocumentsIdentityGetResponses];
+
+export type DocumentPdfDocumentsIdentityPdfGetData = {
+    body?: never;
+    path: {
+        /**
+         * Identity
+         */
+        identity: string;
+    };
+    query?: never;
+    url: '/documents/{identity}/pdf';
+};
+
+export type DocumentPdfDocumentsIdentityPdfGetErrors = {
+    /**
+     * Documento inexistente
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Original indisponível ou com falha de integridade
+     */
+    503: unknown;
+};
+
+export type DocumentPdfDocumentsIdentityPdfGetError = DocumentPdfDocumentsIdentityPdfGetErrors[keyof DocumentPdfDocumentsIdentityPdfGetErrors];
+
+export type DocumentPdfDocumentsIdentityPdfGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: Blob | File;
+};
+
+export type DocumentPdfDocumentsIdentityPdfGetResponse = DocumentPdfDocumentsIdentityPdfGetResponses[keyof DocumentPdfDocumentsIdentityPdfGetResponses];

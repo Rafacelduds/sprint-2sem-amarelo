@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from api.config import get_settings
+from api.documents.routes import router as documents_router
 from api.live import router as live_router
 from api.network import router as network_router
 from api.reliability.routes import router as reliability_router
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     application.include_router(live_router)
     application.include_router(network_router)
     application.include_router(reliability_router)
+    application.include_router(documents_router)
     return application
 
 
