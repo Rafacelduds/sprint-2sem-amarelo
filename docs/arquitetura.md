@@ -15,6 +15,7 @@ O Vite encaminha `/api/*` para a API, removendo `/api`. A tela inicial exibe pos
 | --- | --- |
 | [apps/api/src/api](../apps/api/src/api) | Aplicação FastAPI, configurações e base de acesso ao banco |
 | [apps/api/src/api/gtfs](../apps/api/src/api/gtfs) | Download GTFS, preservação S3, catálogo e seleção temporal |
+| [apps/api/src/api/exports](../apps/api/src/api/exports) | Publicação diária dos brutos e HTTP de download; geração em processo separado |
 | [apps/api/migrations](../apps/api/migrations) | Migrações Alembic |
 | [apps/api/tests](../apps/api/tests) | Testes da API |
 | [apps/web/src](../apps/web/src) | Interface React/TypeScript e seus testes |
@@ -47,6 +48,11 @@ A seleção de veículo é mantida por ID no React, com informações derivadas 
 Preferências visuais tipadas ficam em localStorage (`observaonibus.map.visual.v1`), sem armazenar filtros, seleção ou coordenadas. Valores inválidos, dados corrompidos ou armazenamento bloqueado mantêm os padrões e o mapa funcionando. A API e seus contratos públicos não mudam nesta evolução.
 
 ## Evolução
+
+A US13 acrescenta `python -m api.reliability`, separado da API, para consolidar
+metadados de coleta/GTFS e manifestos de programação em relatórios diários no
+PostgreSQL. A rota pública `/reports/reliability/{day}` só lê o derivado publicado.
+Regras, configuração e limites em [confiabilidade](confiabilidade.md).
 
 A US04 acrescenta o processo `python -m api.schedules`, que preserva programação
 oficial em JSON/S3 e gera partidas em Parquet com relatório de proveniência.

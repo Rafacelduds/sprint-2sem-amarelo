@@ -31,7 +31,9 @@ async def main() -> None:
         ):
             source = OlhoVivo(client, settings.olhovivo_token.get_secret_value())
             store = PostgresStore(
-                async_sessionmaker(engine, expire_on_commit=False), settings.gtfs_source_id
+                async_sessionmaker(engine, expire_on_commit=False),
+                settings.gtfs_source_id,
+                settings.collection_interval_seconds,
             )
             await store.recover_interrupted()
             collector = Collector(source, store, settings, guard=guard)

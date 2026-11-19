@@ -10,7 +10,9 @@ Comece pelo [README do projeto](../README.md) para instalar, executar e verifica
 | Captura GTFS, versões e vínculo das posições | [GTFS](gtfs.md) |
 | Partidas programadas oficiais e alternativa GTFS | [Programação](programacao.md) |
 | Executar e integrar o coletor Olho Vivo | [Coleta](coleta.md) |
+| Publicar lacunas diárias e versões de referência | [Confiabilidade — US13](confiabilidade.md) |
 | Preservar brutos, importar arquivos e registrar proveniência | [Armazenamento](armazenamento-e-proveniencia.md) |
+| Baixar brutos diários em Parquet e operar a publicação | [Publicação dos brutos](publicacao-brutos.md) |
 | Operar backup diário e recuperar a plataforma | [Backup e restauração](backup-e-restauracao.md) |
 | Fluxo US → código → revisão → entrega | [Contribuição](contribuicao.md) |
 | Formular pedidos, planejar com IA e tratar ambiguidades | [Trabalhar com IA](trabalho-com-ia.md) |

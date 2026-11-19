@@ -142,6 +142,11 @@ proveniência está em
 
 ## Coleta de dados
 
+Relatório público de lacunas, versões GTFS e referências de programação:
+[execução e contrato da US13](docs/confiabilidade.md). O processo separado
+`python -m api.reliability --watch` atualiza ontem e hoje; a API publica o resultado
+em `GET /reports/reliability/{day}`. Profile Docker opcional: `relatorios`.
+
 Programação oficial por linha e dia, alternativa GTFS e conferência de totais:
 [execução e contrato da US04](docs/programacao.md).
 
@@ -196,3 +201,6 @@ Para executar a API contra ela, defina no processo `OLHO_VIVO_BASE_URL=http://12
 
 Backup diário, retenção dos sete dumps mais recentes, limpeza segura da inbox e
 recuperação em destinos vazios: [backup e restauração](docs/backup-e-restauracao.md).
+
+Download público diário dos brutos em Parquet, dicionário, licença e operação do
+publicador: [publicação dos brutos](docs/publicacao-brutos.md).
