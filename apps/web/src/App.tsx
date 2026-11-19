@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BusMap from "./components/BusMap";
+import RouteFocusPanel from "./components/RouteFocusPanel";
+import { availableRouteLabels, effectiveRouteFocus } from "./routeFocus";
 import PositionDetails from "./components/PositionDetails";
 import VisualizationControls from "./components/VisualizationControls";
 import { readVisual, VISUAL_KEY } from "./visualization";
@@ -28,9 +30,16 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [visual, setVisual] = useState(readVisual);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [wantedRouteFocus, setWantedRouteFocus] = useState<string | null>(null);
+  const [routePick, setRoutePick] = useState<{
+    version: string | null;
+    labels: string[];
+  } | null>(null);
+  const [routeScrollRequest, setRouteScrollRequest] = useState(0);
   const [group, setGroup] = useState<GroupSelection | null>(null);
   const onSelect = useCallback((id: string) => {
     setSelectedId(id);
+    setRoutePick(null);
     setGroup(null);
   }, []);
   const onGroup = useCallback((value: GroupSelection | null) => {
@@ -164,9 +173,21 @@ export default function App() {
     };
   }, [routeKey, catalog?.version, routeRetry]);
   function changeSelection(value: Selection) {
+    const added = Object.keys(value).filter(
+      (label) => selection[label] === undefined,
+    );
+    if (added.length) setWantedRouteFocus(added[added.length - 1]);
+    else if (wantedRouteFocus && value[wantedRouteFocus] === undefined)
+      setWantedRouteFocus(
+        Object.keys(value)
+          .reverse()
+          .find((label) => availableLabels.has(label)) ?? null,
+      );
+    setRoutePick(null);
     setSelection(value);
   }
   function toggleArea(id: string) {
+    setRoutePick(null);
     setAreas((current) =>
       current.includes(id) ? current.filter((a) => a !== id) : [...current, id],
     );
@@ -183,6 +204,35 @@ export default function App() {
         })),
     [routes, catalog?.version, selectedIds],
   );
+  const availableLabels = availableRouteLabels(activeRoutes);
+  const routeFocus = effectiveRouteFocus(
+    wantedRouteFocus,
+    Object.keys(selection),
+    availableLabels,
+  );
+  const chooseRoute = useCallback((label: string) => {
+    setWantedRouteFocus(label);
+    setRoutePick(null);
+    setSelectedId(null);
+    setGroup(null);
+  }, []);
+  const onRoutePick = useCallback(
+    (labels: string[]) => {
+      if (!labels.length) return;
+      setSelectedId(null);
+      setGroup(null);
+      if (labels.length === 1) {
+        setWantedRouteFocus(labels[0]);
+        setRoutePick(null);
+      } else setRoutePick({ version: catalog?.version ?? null, labels });
+      setRouteScrollRequest((request) => request + 1);
+    },
+    [catalog?.version],
+  );
+  const routeCandidates =
+    routePick?.version === catalog?.version
+      ? (routePick?.labels.filter((label) => availableLabels.has(label)) ?? [])
+      : [];
   const collected = snapshot
     ? new Date(snapshot.collected_at).toLocaleTimeString("pt-BR", {
         timeZone: "America/Sao_Paulo",
@@ -214,6 +264,8 @@ export default function App() {
           onGroup={onGroup}
           styles={styles}
           routes={activeRoutes}
+          routeFocus={routeFocus}
+          onRoutePick={onRoutePick}
           now={Math.floor(observedNow / 15000) * 15000}
           onBounds={onBounds}
           fitRequest={fitRequest}
@@ -306,6 +358,18 @@ export default function App() {
               setSelectedId(null);
               setGroup(null);
             }}
+          />
+          <RouteFocusPanel
+            available={availableLabels.size}
+            focus={routeFocus}
+            candidates={routeCandidates}
+            scrollRequest={routeScrollRequest}
+            onChoose={chooseRoute}
+            onAll={() => {
+              setWantedRouteFocus(null);
+              setRoutePick(null);
+            }}
+            onDismiss={() => setRoutePick(null)}
           />
           <VisualizationControls value={visual} onChange={setVisual} />
           {visual.mode !== "clusters" && (
@@ -404,7 +468,16 @@ export default function App() {
                     key={label}
                     style={{ borderLeftColor: colors[0] }}
                   >
-                    <span>{label}</span>
+                    <button
+                      className="line-focus-button"
+                      aria-label={`Destacar linha ${label}`}
+                      aria-pressed={routeFocus === label}
+                      disabled={!availableLabels.has(label)}
+                      onClick={() => chooseRoute(label)}
+                    >
+                      {label}
+                      {routeFocus === label && <small>Em foco</small>}
+                    </button>
                     <select
                       aria-label={`Sentido da linha ${label}`}
                       value={selection[label]}

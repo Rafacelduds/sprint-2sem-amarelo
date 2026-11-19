@@ -21,8 +21,12 @@ vi.mock("./components/BusMap", () => ({
     onBounds,
     onSelect,
     visual,
+    routeFocus,
+    onRoutePick,
   }: {
     onSelect: (id: string) => void;
+    routeFocus: string | null;
+    onRoutePick: (labels: string[]) => void;
     visual: { mode: string; busDiameter: number; groupScale: number };
     vehicles: Vehicle[];
     routes: RouteCollection[];
@@ -39,6 +43,13 @@ vi.mock("./components/BusMap", () => ({
         </div>
         <button onClick={() => onSelect(vehicles[0].id)}>
           Selecionar ônibus no mapa
+        </button>
+        <div data-testid="route-focus">{routeFocus ?? "all"}</div>
+        <button onClick={() => onRoutePick(["5015-10"])}>
+          Clicar percurso único
+        </button>
+        <button onClick={() => onRoutePick(["5015-10", "701A-10"])}>
+          Clicar trecho compartilhado
         </button>
         <div data-testid="map">{vehicles.map((v) => v.id).join(",")}</div>
         <div data-testid="routes">
@@ -438,4 +449,93 @@ it("shows a simple mode choice and only the relevant controls, persisting intens
   expect(
     screen.getByText("Mais opções").closest("details"),
   ).not.toHaveAttribute("open");
+});
+
+describe("Foco dos percursos", () => {
+  it("focuses additions, switches focus without requests or filter changes, and falls back on removal", async () => {
+    const fetch = respondWithRoutes();
+    render(<App />);
+    await screen.findByRole("button", { name: /^5015-10/ });
+    fireEvent.click(screen.getByRole("button", { name: /^5015-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^701A-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route-focus")).toHaveTextContent("701A-10"),
+    );
+    const calls = fetch.mock.calls.length;
+    fireEvent.click(
+      screen.getByRole("button", { name: "Destacar linha 5015-10" }),
+    );
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+    expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
+    fireEvent.click(screen.getByRole("button", { name: "Destacar todas" }));
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("all");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clicar percurso único" }),
+    );
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+    expect(fetch.mock.calls.length).toBe(calls);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remover linha 5015-10" }),
+    );
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("701A-10");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remover linha 701A-10" }),
+    );
+    expect(
+      screen.queryByRole("region", { name: "Destaque dos percursos" }),
+    ).not.toBeInTheDocument();
+  });
+  it("asks in the panel for overlapping lines and closes vehicle details", async () => {
+    respondWithRoutes();
+    render(<App />);
+    await screen.findByRole("button", { name: /^5015-10/ });
+    fireEvent.click(screen.getByRole("button", { name: /^5015-10/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^701A-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route-focus")).toHaveTextContent("701A-10"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Selecionar ônibus no mapa" }),
+    );
+    expect(
+      screen.getByRole("region", { name: "Detalhes da seleção" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clicar trecho compartilhado" }),
+    );
+    expect(
+      screen.queryByRole("region", { name: "Detalhes da seleção" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Linhas neste trecho")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Escolher linha 5015-10" }),
+    );
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+    expect(screen.queryByText("Linhas neste trecho")).not.toBeInTheDocument();
+    expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
+  });
+  it("keeps available focus when the last added line has no geometry", async () => {
+    const fetch = respondWithRoutes();
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (...args) =>
+      String(args[0]).includes("/network/routes/2?")
+        ? new Response("{}", { status: 404 })
+        : original(...args),
+    );
+    render(<App />);
+    await screen.findByRole("button", { name: /^5015-10/ });
+    fireEvent.click(screen.getByRole("button", { name: /^5015-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^701A-10/ }));
+    await screen.findByText(/Percurso planejado indisponível em 1 sentidos/);
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+    expect(
+      screen.getByRole("button", { name: "Destacar linha 701A-10" }),
+    ).toBeDisabled();
+  });
 });

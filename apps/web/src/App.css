@@ -1093,3 +1093,76 @@ th {
     margin-top: 10px;
   }
 }
+
+.route-focus-panel {
+  margin: 12px 0;
+  border: 1px solid #bfd0c1;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f4f8f1;
+  font-size: 11px;
+  scroll-margin-top: 82px;
+}
+.route-focus-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.route-focus-heading button,
+.dismiss-routes {
+  border: 0;
+  background: transparent;
+  padding: 4px 0;
+  text-decoration: underline;
+  font-size: 10px;
+}
+.route-focus-panel p {
+  margin: 7px 0 0;
+  line-height: 1.5;
+  color: #607465;
+}
+.route-candidates {
+  border-top: 1px solid #d3e0d1;
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.route-candidates > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.route-candidates > div button {
+  padding: 8px;
+  border: 1px solid #b3c8b8;
+  border-radius: 5px;
+}
+.route-focus-panel:focus-visible,
+.line-chip .line-focus-button:focus-visible {
+  outline: 3px solid #315e56;
+  outline-offset: 2px;
+}
+.line-chip .line-focus-button {
+  background: transparent;
+  border: 0;
+  padding: 3px 0;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 650;
+  color: #244a3f;
+}
+.line-chip .line-focus-button small {
+  display: block;
+  font-size: 8px;
+  font-weight: 500;
+}
+.line-chip:has(.line-focus-button[aria-pressed="true"]) {
+  background: #edf5e9;
+  border-color: #a9c19f;
+}
+.line-chip .line-focus-button:disabled {
+  color: #66766c;
+  cursor: default;
+}

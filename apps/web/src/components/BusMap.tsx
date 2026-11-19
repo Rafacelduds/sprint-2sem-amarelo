@@ -5,6 +5,13 @@ import { heatAppearance, type Visualization } from "../visualization";
 import type { Vehicle } from "../api/positions";
 import type { RouteCollection } from "../api/network";
 import {
+  availableRouteLabels,
+  projectRoutes,
+  routesNearPoint,
+  routePaint,
+  casingColor,
+} from "../routeFocus";
+import {
   gpsQuality,
   UNKNOWN_COLOR,
   type Bounds,
@@ -56,6 +63,8 @@ function BusMap({
   onGroup,
   styles,
   routes,
+  routeFocus,
+  onRoutePick,
   fitRequest,
   onBounds,
   now,
@@ -67,10 +76,16 @@ function BusMap({
   onGroup: (group: GroupSelection | null) => void;
   styles: Map<number, LineStyle>;
   routes: RouteCollection[];
+  routeFocus: string | null;
+  onRoutePick: (labels: string[]) => void;
   fitRequest: number;
   onBounds: (bounds: Bounds) => void;
   now: number;
 }) {
+  const hasRoutes = useMemo(
+    () => availableRouteLabels(routes).size > 0,
+    [routes],
+  );
   const index = useMemo(
     () => createBusIndex(vehicles, styles),
     [vehicles, styles],
@@ -168,11 +183,13 @@ function BusMap({
       return;
     }
     const appearance = heatAppearance(visual.heatIntensity, visual.mode);
-    instance.getPane("density")!.style.opacity = String(appearance.opacity);
+    instance.getPane("density")!.style.opacity = String(
+      appearance.opacity * (hasRoutes ? 0.5 : 1),
+    );
     layer.setOptions({ max: appearance.max });
     layer.setLatLngs(vehicles.map((bus) => [bus.latitude, bus.longitude, 1]));
     if (!instance.hasLayer(layer)) layer.addTo(instance);
-  }, [vehicles, visual.mode, visual.heatIntensity]);
+  }, [vehicles, visual.mode, visual.heatIntensity, hasRoutes]);
 
   useEffect(() => {
     const layer = focusLayer.current;
@@ -244,6 +261,7 @@ function BusMap({
               pane: "vehicleClusters",
               title: `${count} ônibus agrupados. Ativar para explorar.`,
               keyboard: true,
+              bubblingMouseEvents: false,
             }).addTo(instance);
             entry = { marker, count, signature };
             pool.set(key, entry);
@@ -294,6 +312,7 @@ function BusMap({
             fillOpacity: old ? 0.15 : 0.9,
             dashArray: old ? "2 2" : undefined,
             pane: "vehiclePositions",
+            bubblingMouseEvents: false,
           };
           if (!entry) {
             entry = {
@@ -323,28 +342,81 @@ function BusMap({
   }, [index, visual, styles, now, onSelect, onGroup]);
 
   useEffect(() => {
+    const instance = map.current;
+    if (!instance) return;
+    instance.getPane("tilePane")!.style.opacity = hasRoutes ? "0.72" : "1";
+    instance.getPane("vehiclePositions")!.style.opacity = hasRoutes
+      ? "0.6"
+      : "1";
+    instance.getPane("vehicleClusters")!.style.opacity = hasRoutes
+      ? "0.55"
+      : "1";
+  }, [hasRoutes]);
+
+  useEffect(() => {
+    const instance = map.current;
     const layer = routeLayer.current;
-    if (!layer) return;
+    if (!layer || !instance) return;
     layer.clearLayers();
-    for (const route of routes)
-      for (const feature of route.features) {
-        const color =
-          styles.get(feature.properties.line_id)?.color ?? UNKNOWN_COLOR;
-        for (const segment of feature.geometry.coordinates) {
-          L.polyline(
-            segment.map(([lon, lat]) => L.latLng(lat, lon)),
-            {
-              color,
-              weight: 3,
-              opacity: 0.4,
-              pane: "plannedRoutes",
-              dashArray: feature.properties.direction === 2 ? "7 6" : undefined,
-              interactive: false,
-            },
-          ).addTo(layer);
-        }
+    const features = routes
+      .flatMap((route) => route.features)
+      .sort(
+        (a, b) =>
+          Number(a.properties.label === routeFocus) -
+          Number(b.properties.label === routeFocus),
+      );
+    for (const feature of features) {
+      const color =
+        styles.get(feature.properties.line_id)?.color ?? UNKNOWN_COLOR;
+      const paint = routePaint(feature.properties.label, routeFocus);
+      for (const segment of feature.geometry.coordinates) {
+        const path = segment.map(([lon, lat]) => L.latLng(lat, lon));
+        const options = {
+          pane: "plannedRoutes",
+          interactive: false,
+          dashArray: feature.properties.direction === 2 ? "7 6" : undefined,
+        };
+        if (paint.casing)
+          L.polyline(path, {
+            ...options,
+            color: casingColor(color),
+            weight: paint.weight + 2,
+            opacity: 0.85,
+          }).addTo(layer);
+        L.polyline(path, {
+          ...options,
+          color,
+          weight: paint.weight,
+          opacity: paint.opacity,
+        }).addTo(layer);
       }
-  }, [routes, styles]);
+    }
+  }, [routes, styles, routeFocus]);
+
+  useEffect(() => {
+    const instance = map.current;
+    if (!instance || !hasRoutes) return;
+    const project = () =>
+      projectRoutes(
+        routes,
+        ([lon, lat]) => instance.latLngToContainerPoint([lat, lon]),
+        instance.getSize(),
+      );
+    let segments = project();
+    const update = () => {
+      segments = project();
+    };
+    const click = (event: L.LeafletMouseEvent) => {
+      const labels = routesNearPoint(segments, event.containerPoint);
+      if (labels.length) onRoutePick(labels);
+    };
+    instance.on("moveend zoomend resize", update);
+    instance.on("click", click);
+    return () => {
+      instance.off("moveend zoomend resize", update);
+      instance.off("click", click);
+    };
+  }, [routes, hasRoutes, onRoutePick]);
 
   useEffect(() => {
     if (fitVersion.current === fitRequest) return;
