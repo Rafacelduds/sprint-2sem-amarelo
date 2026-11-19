@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BusMap from "./components/BusMap";
+import PositionDetails from "./components/PositionDetails";
+import VisualizationControls from "./components/VisualizationControls";
+import { readVisual, VISUAL_KEY } from "./visualization";
+import type { GroupSelection } from "./clusters";
 import VehicleList from "./components/VehicleList";
 import {
   getCatalog,
@@ -22,6 +26,24 @@ import "./App.css";
 export default function App() {
   const { snapshot, error, loading, now, stale, age, retry } = usePositions();
   const [query, setQuery] = useState("");
+  const [visual, setVisual] = useState(readVisual);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [group, setGroup] = useState<GroupSelection | null>(null);
+  const onSelect = useCallback((id: string) => {
+    setSelectedId(id);
+    setGroup(null);
+  }, []);
+  const onGroup = useCallback((value: GroupSelection | null) => {
+    setGroup(value);
+    if (value) setSelectedId(null);
+  }, []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(VISUAL_KEY, JSON.stringify(visual));
+    } catch {
+      /* Optional local preference storage. */
+    }
+  }, [visual]);
   const [selection, setSelection] = useState<Selection>({});
   const [areas, setAreas] = useState<string[]>([]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -59,6 +81,7 @@ export default function App() {
           ),
     [snapshot, stale, selection, areas, styles],
   );
+  const selectedVehicle = vehicles.find((bus) => bus.id === selectedId) ?? null;
   const visible = useMemo(
     () => vehicles.filter((bus) => inBounds(bus, bounds)),
     [vehicles, bounds],
@@ -185,7 +208,10 @@ export default function App() {
       <section className="map-surface" aria-label="Monitoramento ao vivo">
         <BusMap
           vehicles={vehicles}
-          selection={selection}
+          visual={visual}
+          selected={selectedVehicle}
+          onSelect={onSelect}
+          onGroup={onGroup}
           styles={styles}
           routes={activeRoutes}
           now={Math.floor(observedNow / 15000) * 15000}
@@ -268,6 +294,37 @@ export default function App() {
               </p>
             </details>
           </section>
+          <PositionDetails
+            selectedId={selectedId}
+            vehicle={selectedVehicle}
+            group={group}
+            styles={styles}
+            collectedAt={snapshot?.collected_at ?? null}
+            now={observedNow}
+            onSelect={onSelect}
+            onClose={() => {
+              setSelectedId(null);
+              setGroup(null);
+            }}
+          />
+          <VisualizationControls value={visual} onChange={setVisual} />
+          {visual.mode !== "clusters" && (
+            <section
+              className="density-legend"
+              aria-label="Legenda de densidade"
+            >
+              <strong>Concentração de posições observadas</strong>
+              <div className="density-scale" />
+              <div className="density-labels">
+                <span>Menor</span>
+                <span>Maior</span>
+              </div>
+              <p>
+                Inclui GPS antigo ou sem horário. A intensidade varia com o
+                zoom; não indica cobertura, demanda ou qualidade do serviço.
+              </p>
+            </section>
+          )}
           <details className="area-filter">
             <summary>
               Áreas de operação{" "}
@@ -307,7 +364,8 @@ export default function App() {
           </details>
           {catalog?.status !== "ready" && (
             <p className="catalog-note">
-              Cores e percursos planejados indisponíveis no momento. As posições continuam disponíveis.
+              Cores e percursos planejados indisponíveis no momento. As posições
+              continuam disponíveis.
             </p>
           )}
           {catalog?.synthetic && (
@@ -481,7 +539,7 @@ export default function App() {
                 Tentar carregar percursos
               </button>
             )}
-          <VehicleList vehicles={visible} />
+          <VehicleList vehicles={visible} onSelect={onSelect} />
         </div>
         <footer className="explorer-footer">
           <span className={`status-dot ${error || stale ? "offline" : ""}`} />
@@ -504,7 +562,12 @@ export default function App() {
           {selectedLabels.length
             ? `${selectedLabels.length} linhas na comparação`
             : "Visão geral da rede"}{" "}
-          · grupos por proximidade
+          ·{" "}
+          {visual.mode === "density"
+            ? "densidade de posições"
+            : visual.mode === "mixed"
+              ? "densidade e grupos"
+              : "grupos por proximidade"}
         </span>
       </div>
       {(stale || error) && (
@@ -525,7 +588,8 @@ export default function App() {
           desconhecida em cinza.
         </p>
         <p>
-          Bolhas neutras mostram quantidades de ônibus; amplie para ver as
+          O centro dos grupos mostra a quantidade de posições; os anéis
+          representam cores compartilhadas pelas linhas. Amplie para ver as
           posições individuais. Sentido 1: traço contínuo · sentido 2:
           tracejado. GPS antigo/desconhecido: ponto vazado e menor opacidade.
         </p>

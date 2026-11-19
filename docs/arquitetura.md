@@ -38,7 +38,13 @@ O endpoint público `/vehicles/positions` adapta a resposta do Olho Vivo para um
 
 O catálogo público `/network/catalog` e a geometria `/network/routes/{line_id}` consomem o GTFS versionado capturado pela US02 no PostgreSQL/S3, com cache derivado de geometrias em SQLite e correspondência explícita por letreiro e destino. Contrato, limitações e fixture em [rede-us02.md](integracoes/rede-us02.md). Uma exportação JSON via `NETWORK_CATALOG_PATH` continua disponível como substituição explícita para testes e integrações específicas.
 
-O mapa usa Supercluster sobre as posições já filtradas. Grupos neutros representam proximidade, sem atribuir uma cor única a áreas misturadas; as posições individuais mantêm as cores confirmadas. Panes Leaflet separam mapa-base, percursos (z=350), veículos (z=450) e grupos (z=460). Percursos usam 40% de opacidade e não recebem eventos de ponteiro. O índice é reutilizado durante a navegação e reconstruído quando o conjunto de posições muda.
+O mapa usa Supercluster sobre as posições já filtradas, com histogramas de cores em `map/reduce`. Os histogramas são copiados antes da redução para preservar os agregados dos níveis filhos. Anéis representam a proporção de posições ou a presença de cada cor, com centro neutro para a contagem; cores desconhecidas permanecem em cinza. Pan/zoom consultam o mesmo índice; dados, filtros ou catálogo de cores o reconstroem. Preferências de tamanho/composição não alteram o índice. Marcadores e ícones são reutilizados enquanto sua aparência continua igual.
+
+A camada Canvas Leaflet.heat 1.0.1 recebe as mesmas posições filtradas (peso 1), incluindo horários antigos/desconhecidos. Usa raio 25 px, blur 15 px, intensidade máxima 8 e zoom de referência 16; a legenda informa concentração relativa e dependência do zoom. Panes separam base, densidade (z=340, opacidade 45% ou 25% no Misto), percursos (350), veículos (450), grupos (460) e destaque selecionado (470). Densidade, percursos e destaque não interceptam cliques. A integração adapta apenas a tipagem da classe Layer do plugin, cujos tipos distribuídos visam Leaflet 2; o runtime continua no Leaflet 1.9 do projeto.
+
+A seleção de veículo é mantida por ID no React, com informações derivadas do snapshot filtrado atual; posição ausente/expirada recebe aviso. Detalhes e páginas coincidentes usam o painel existente em desktop/celular. No modo Densidade, só o veículo selecionado ganha destaque, e a lista permanece disponível. Não há popup de ônibus sobre o mapa.
+
+Preferências visuais tipadas ficam em localStorage (`observaonibus.map.visual.v1`), sem armazenar filtros, seleção ou coordenadas. Valores inválidos, dados corrompidos ou armazenamento bloqueado mantêm os padrões e o mapa funcionando. A API e seus contratos públicos não mudam nesta evolução.
 
 ## Evolução
 

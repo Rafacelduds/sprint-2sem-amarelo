@@ -103,3 +103,30 @@ describe("Agrupamentos espaciais", () => {
     ).toBe(10000);
   });
 });
+
+// Histograms must remain correct in child clusters after parents are reduced.
+describe("Composição dos agrupamentos", () => {
+  it("keeps histograms equal to their leaves at every zoom, including unknown/shared colors", () => {
+    const buses = Array.from({ length: 240 }, (_, i) =>
+      bus(i, -23.5 + (i % 12) * 0.001, -46.6 + Math.floor(i / 12) * 0.001),
+    );
+    const styles = new Map([[1, { area: 2, color: "#002F6C" }]]);
+    const index = createBusIndex(buses, styles);
+    for (let zoom = 9; zoom <= MAP_MAX_ZOOM; zoom++) {
+      for (const point of index.getClusters(world, zoom)) {
+        if (!isCluster(point)) continue;
+        const leaves = index.getLeaves(point.properties.cluster_id, Infinity);
+        const expected: Record<string, number> = {};
+        for (const leaf of leaves) {
+          const color =
+            leaf.properties.bus.line_id === 1 ? "#002F6C" : "#78838B";
+          expected[color] = (expected[color] ?? 0) + 1;
+        }
+        expect(point.properties.colors).toEqual(expected);
+        expect(
+          Object.values(point.properties.colors).reduce((a, b) => a + b, 0),
+        ).toBe(point.properties.point_count);
+      }
+    }
+  });
+});

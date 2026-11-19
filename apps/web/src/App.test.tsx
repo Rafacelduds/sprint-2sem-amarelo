@@ -19,7 +19,11 @@ vi.mock("./components/BusMap", () => ({
     vehicles,
     routes,
     onBounds,
+    onSelect,
+    visual,
   }: {
+    onSelect: (id: string) => void;
+    visual: { mode: string; busDiameter: number; groupScale: number };
     vehicles: Vehicle[];
     routes: RouteCollection[];
     onBounds: (b: Bounds) => void;
@@ -30,6 +34,12 @@ vi.mock("./components/BusMap", () => ({
     );
     return (
       <div>
+        <div data-testid="visual-mode">
+          {visual.mode}:{visual.busDiameter}:{visual.groupScale}
+        </div>
+        <button onClick={() => onSelect(vehicles[0].id)}>
+          Selecionar ônibus no mapa
+        </button>
         <div data-testid="map">{vehicles.map((v) => v.id).join(",")}</div>
         <div data-testid="routes">
           {routes
@@ -160,6 +170,7 @@ function respondWithRoutes() {
   });
 }
 afterEach(() => {
+  window.localStorage.clear();
   cleanup();
   vi.restoreAllMocks();
   vi.useRealTimers();
@@ -278,7 +289,9 @@ describe("Rede pública", () => {
     render(<App />);
     await screen.findByText("Atualização ativa");
     expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
-    expect(screen.getByText(/Cores e percursos planejados indisponíveis/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Cores e percursos planejados indisponíveis/),
+    ).toBeInTheDocument();
   });
   it("does not display expired positions as live", async () => {
     respond(61);
@@ -307,4 +320,79 @@ describe("Rede pública", () => {
     expect(screen.getByTestId("map")).toBeEmptyDOMElement();
     expect(screen.getByText("As posições expiraram")).toBeInTheDocument();
   });
+});
+
+describe("Visualização e detalhes", () => {
+  it("switches modes, persists preferences, and restores defaults without changing filters", async () => {
+    respondWithRoutes();
+    const first = render(<App />);
+    await screen.findByRole("button", { name: /5015-10/ });
+    fireEvent.click(screen.getByRole("button", { name: /5015-10/ }));
+    fireEvent.click(screen.getByText("Visualização", { exact: true }));
+    fireEvent.change(screen.getByLabelText("Modo de visualização"), {
+      target: { value: "mixed" },
+    });
+    fireEvent.change(
+      screen.getByRole("slider", { name: /Tamanho dos ônibus/ }),
+      { target: { value: "18" } },
+    );
+    fireEvent.change(
+      screen.getByRole("slider", { name: /Tamanho dos grupos/ }),
+      { target: { value: "150" } },
+    );
+    expect(screen.getByTestId("visual-mode")).toHaveTextContent("mixed:18:1.5");
+    expect(screen.getByTestId("map")).toHaveTextContent("100,110");
+    fireEvent.change(screen.getByLabelText("Modo de visualização"), {
+      target: { value: "density" },
+    });
+    expect(
+      screen.getByRole("slider", { name: /Tamanho dos grupos/ }),
+    ).toBeDisabled();
+    expect(screen.getByText(/Inclui GPS antigo/)).toBeInTheDocument();
+    first.unmount();
+    render(<App />);
+    expect(screen.getByTestId("visual-mode")).toHaveTextContent(
+      "density:18:1.5",
+    );
+    fireEvent.click(screen.getByText("Visualização", { exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar padrões" }));
+    expect(screen.getByTestId("visual-mode")).toHaveTextContent("clusters:9:1");
+  });
+  it("opens details above filters, keeps selection during navigation, and reports filtering out", async () => {
+    respond();
+    render(<App />);
+    await screen.findByRole("button", { name: /5015-10/ });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Selecionar ônibus no mapa" }),
+    );
+    expect(
+      screen.getByRole("region", { name: "Detalhes da seleção" }),
+    ).toHaveTextContent("Ônibus 100");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mover mapa de teste" }),
+    );
+    expect(
+      screen.getByRole("region", { name: "Detalhes da seleção" }),
+    ).toHaveTextContent("Ônibus 100");
+    fireEvent.click(screen.getByRole("button", { name: /701A-10/ }));
+    expect(
+      within(
+        screen.getByRole("region", { name: "Detalhes da seleção" }),
+      ).getByRole("status"),
+    ).toHaveTextContent("deixou de estar disponível");
+    fireEvent.click(screen.getByRole("button", { name: "Fechar detalhes" }));
+    expect(
+      screen.queryByRole("region", { name: "Detalhes da seleção" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+it("keeps the map usable when saving visual preferences is blocked", async () => {
+  vi.spyOn(window.localStorage, "setItem").mockImplementation(() => { throw new Error("quota"); });
+  respond(); render(<App />);
+  await screen.findByRole("button", { name: /5015-10/ });
+  fireEvent.click(screen.getByText("Visualização", { exact: true }));
+  fireEvent.change(screen.getByLabelText("Modo de visualização"), { target: { value: "density" } });
+  expect(screen.getByTestId("visual-mode")).toHaveTextContent("density:9:1");
+  expect(screen.getByTestId("map")).toHaveTextContent("100");
 });
