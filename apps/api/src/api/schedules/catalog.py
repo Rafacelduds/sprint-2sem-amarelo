@@ -3,6 +3,7 @@
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api.config import Settings
@@ -19,10 +20,32 @@ async def resolve_feed(
     version = await session.get(GtfsVersion, sha) if sha else None
     if version is None:
         return None
-    if version.bucket != archive.bucket:
-        raise ValueError("GTFS catalogado em bucket diferente do configurado")
-    reference = archive.reference(version.object_key)
-    if reference.sha256 != sha:
+    # O catálogo US02 não guarda VersionId. A US32 preserva bucket/chave lógicos
+    # no dump e mapeia suas identidades versionadas para o objeto recuperado.
+    identity_adapter = TypeAdapter(tuple[str, str, str | None])
+    restored = [
+        ref
+        for identity, ref in archive.relocations.items()
+        if identity_adapter.validate_json(identity)[:2] == (version.bucket, version.object_key)
+    ]
+    if restored:
+        if any(ref.bucket != archive.bucket for ref in restored):
+            raise ValueError("mapa GTFS aponta para bucket diferente do configurado")
+        if any(
+            ref.sha256 != sha
+            or ref.stored_sha256 != sha
+            or ref.size != version.size
+            or ref.stored_size != version.size
+            or ref.encoding != "identity"
+            for ref in restored
+        ):
+            raise ValueError("mapa GTFS diverge do conteúdo catalogado")
+        reference = restored[0]
+    elif version.bucket == archive.bucket:
+        reference = archive.reference(version.object_key)
+    else:
+        raise ValueError("GTFS em bucket diferente sem mapa de restauração válido")
+    if reference.sha256 != sha or reference.size != version.size:
         raise ValueError("hash do catálogo GTFS diverge do objeto S3")
     path = output / "gtfs-us02.zip"
     archive.download(reference, path)

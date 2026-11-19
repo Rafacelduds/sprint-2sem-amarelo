@@ -107,6 +107,12 @@ ativo no calendário resulta em `gtfs_no_departures`, distinguível de
 `unavailable`. A cobertura declarada do ZIP precisa conter a data consultada.
 Com `--gtfs-source-id`, só se usa versão da US02 conhecida até a consulta,
 com hash conferido no S3; a captura anterior também não certifica vigência.
+Após restauração pela US32, configure `S3_RESTORE_MAP` conforme o contrato de
+[backup e restauração](backup-e-restauracao.md). O catálogo continua apontando
+para bucket/chave originais; a US04 resolve esses aliases versionados pelo mapa
+antes de acessar o bucket recuperado. Destino, hashes, tamanhos e codificação
+devem corresponder ao ZIP catalogado, e o download confere os bytes efetivos.
+Sem mapa correspondente, um bucket diferente continua sendo recusado.
 
 ## Verificação
 
@@ -114,9 +120,13 @@ Os testes cobrem totais divergentes, horários inválidos, meia-noite, calendár
 exceções, faixas sobrepostas, frequências exatas/estimadas, prioridade oficial,
 retentativas, indisponibilidade e falha de armazenamento. O teste integrado usa
 HTTP local real, S3 local e Parquet; as fixtures são inteiramente sintéticas.
+A regressão de restauração usa catálogo PostgreSQL e ZIP legado da US02 no S3,
+copia o objeto para outro bucket e carrega o mapa pela configuração da US32.
+Confere a versão física lida, recusa bytes corrompidos e cobre ausência de mapa,
+identidade incorreta e divergências de destino, hash, tamanho ou codificação.
 
 ```bash
-uv run pytest apps/api/tests/test_schedules.py
+uv run pytest apps/api/tests/test_schedules.py apps/api/tests/test_schedules_restore.py
 ```
 
 Configure `TEST_S3_ENDPOINT_URL` para executar a integração S3; sem isso, ela é
