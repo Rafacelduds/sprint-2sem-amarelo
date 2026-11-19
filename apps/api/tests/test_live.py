@@ -112,3 +112,30 @@ async def test_public_endpoint_filter_and_no_store(monkeypatch: pytest.MonkeyPat
     assert empty.json()["vehicles"] == []
     assert len(empty.json()["lines"]) == 1
     assert invalid.status_code == 422
+
+
+def test_destination_uses_directional_headsign_not_always_lt0() -> None:
+    raw: dict[str, object] = {
+        "l": [
+            {
+                "cl": 1,
+                "c": "701A-10",
+                "sl": 1,
+                "lt0": "Metro",
+                "lt1": "Parque",
+                "vs": [{"p": 1, "py": -23, "px": -46}],
+            },
+            {
+                "cl": 2,
+                "c": "701A-10",
+                "sl": 2,
+                "lt0": "Metro",
+                "lt1": "Parque",
+                "vs": [{"p": 2, "py": -23, "px": -46}],
+            },
+            {"cl": 3, "c": "701A-10", "sl": 2, "lt0": "Metro", "vs": []},
+        ]
+    }
+    result = normalize(raw, datetime.now(UTC))
+    assert [line.destination for line in result.lines] == ["Metro", "Parque", ""]
+    assert [bus.destination for bus in result.vehicles] == ["Metro", "Parque"]

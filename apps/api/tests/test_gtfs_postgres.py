@@ -178,3 +178,52 @@ async def test_resilient_collection_preserves_gtfs_link_across_garage_retry(
         assert position.gtfs_link_status == "matched"
         cycle = await session.scalar(select(CollectionCycle))
         assert cycle is not None and cycle.status == "success"
+
+
+async def test_live_map_reference_respects_source_coverage_and_capture_time(
+    sessions: async_sessionmaker[AsyncSession],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from zoneinfo import ZoneInfo
+
+    from api.config import get_settings
+    from api.network_gtfs import latest_reference
+
+    monkeypatch.setattr("api.db.session.SessionFactory", sessions)
+    monkeypatch.setattr(get_settings(), "gtfs_source_id", "map-source")
+    now = datetime.now(UTC)
+    today = now.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+    catalog = Catalog(sessions)
+    expected = ""
+    for index, (source, age, covered) in enumerate(
+        [
+            ("map-source", -4, True),
+            ("map-source", -3, True),
+            ("other-source", -2, True),
+            ("map-source", -1, False),
+            ("map-source", 1, True),
+        ]
+    ):
+        path = tmp_path / "feed.zip"
+        path.write_bytes(feed_bytes(version=str(index)))
+        metadata = replace(
+            inspect_feed(path),
+            starts_on=today if covered else today + timedelta(days=1),
+            ends_on=today + timedelta(days=2),
+        )
+        await catalog.record(
+            metadata,
+            source_id=source,
+            source_url="https://example.org/gtfs",
+            captured_at=now + timedelta(hours=age),
+            bucket="raw-data",
+            key=f"gtfs/{metadata.sha256}.zip",
+        )
+        if index == 1:
+            expected = metadata.sha256
+    reference = await latest_reference()
+    assert reference and reference.version == expected
+    assert reference.bucket == "raw-data"
+    monkeypatch.setattr(get_settings(), "gtfs_source_id", "missing-source")
+    assert await latest_reference() is None
