@@ -6,10 +6,11 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import cast
+from typing import Any, cast
 from uuid import UUID, uuid4
 
-import duckdb
+import pyarrow  # pyright: ignore[reportMissingTypeStubs]
+import pyarrow.parquet  # pyright: ignore[reportMissingTypeStubs]
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import defer
@@ -38,59 +39,70 @@ class Capture:
 
 
 def build_parquet(captures: list[Capture], archive: S3Archive, day: date, path: Path) -> None:
-    # Banco em disco e um corpo por vez: não materializar o dia inteiro em memória.
-    with duckdb.connect(str(path.with_suffix(".duckdb"))) as connection:
-        connection.execute("SET memory_limit='128MB'")
-        connection.execute("SET threads=1")
-        connection.execute("SET TimeZone='UTC'")
-        connection.execute("SET preserve_insertion_order=true")
-        connection.execute(
-            "CREATE TABLE responses (captura_id VARCHAR, ciclo_id VARCHAR, "
-            "coletado_em TIMESTAMPTZ, endpoint VARCHAR, empresa INTEGER, fonte VARCHAR, "
-            "sha256_original VARCHAR, corpo_original BLOB)"
-        )
+    # PyArrow não fornece tipos completos. Restringir Any à fronteira do escritor.
+    arrow = cast(Any, pyarrow)
+    parquet = cast(Any, pyarrow.parquet)
+    metadata = {
+        "license": LICENSE,
+        "license_name": "CC BY 4.0",
+        "attribution": "SPTrans / API Olho Vivo; disponibilização pelo Grupo Amarelo",
+        "source": SOURCE,
+        "day": day.isoformat(),
+        "timezone": str(ZONE),
+        "schema_version": RULE,
+        "data_dictionary": json.dumps(DICTIONARY, ensure_ascii=False, sort_keys=True),
+    }
+    schema = arrow.schema(
+        [
+            ("captura_id", arrow.string()),
+            ("ciclo_id", arrow.string()),
+            ("coletado_em", arrow.timestamp("us", tz="UTC")),
+            ("endpoint", arrow.string()),
+            ("empresa", arrow.int32()),
+            ("fonte", arrow.string()),
+            ("sha256_original", arrow.string()),
+            ("corpo_original", arrow.binary()),
+        ],
+        metadata={k.encode(): v.encode() for k, v in metadata.items()},
+    )
+    # Cada chamada descarrega um row group. Corpos não ficam retidos até o fim do dia.
+    rows: list[dict[str, object]] = []
+    buffered_bytes = 0
+    with parquet.ParquetWriter(
+        path, schema, compression="zstd", use_dictionary=False, write_statistics=False
+    ) as writer:
+
+        def flush() -> None:
+            if rows:
+                writer.write_table(arrow.Table.from_pylist(rows, schema=schema))
+                rows.clear()
+
         for capture in captures:
             downloaded = path.with_suffix(".payload")
-            archive.download(capture.ref, downloaded)
             try:
+                archive.download(capture.ref, downloaded)
                 body = downloaded.read_bytes()
                 if capture.ref.encoding == "gzip":
                     body = gzip.decompress(body)
-                connection.execute(
-                    "INSERT INTO responses VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    [
-                        str(capture.id),
-                        str(capture.cycle_id),
-                        capture.collected_at,
-                        capture.endpoint,
-                        capture.company,
-                        SOURCE,
-                        capture.ref.sha256,
-                        body,
-                    ],
+                if rows and (buffered_bytes + len(body) > 8 * 1024 * 1024 or len(rows) >= 256):
+                    flush()
+                    buffered_bytes = 0
+                rows.append(
+                    {
+                        "captura_id": str(capture.id),
+                        "ciclo_id": str(capture.cycle_id),
+                        "coletado_em": capture.collected_at,
+                        "endpoint": capture.endpoint,
+                        "empresa": capture.company,
+                        "fonte": SOURCE,
+                        "sha256_original": capture.ref.sha256,
+                        "corpo_original": body,
+                    }
                 )
+                buffered_bytes += len(body)
             finally:
                 downloaded.unlink(missing_ok=True)
-        metadata = {
-            "license": LICENSE,
-            "license_name": "CC BY 4.0",
-            "attribution": "SPTrans / API Olho Vivo; disponibilização pelo Grupo Amarelo",
-            "source": SOURCE,
-            "day": day.isoformat(),
-            "timezone": str(ZONE),
-            "schema_version": RULE,
-            "data_dictionary": json.dumps(DICTIONARY, ensure_ascii=False, sort_keys=True),
-        }
-
-        # Literais escapados; nenhuma URL ou chave recebida vira código SQL.
-        def literal(value: str) -> str:
-            return "'" + value.replace("'", "''") + "'"
-
-        kv = ", ".join(literal(k) + ": " + literal(v) for k, v in metadata.items())
-        connection.execute(
-            f"COPY responses TO {literal(str(path))} "
-            f"(FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 2048, KV_METADATA {{{kv}}})"
-        )
+        flush()
 
 
 class ExportService:

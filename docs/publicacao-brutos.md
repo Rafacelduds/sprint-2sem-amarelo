@@ -99,9 +99,13 @@ reprocessamento explícito; a varredura automática detecta novas capturas por c
 
 Todas as capturas selecionadas precisam de referência arquivada da US12. Os bytes
 são baixados e verificados um corpo por vez, mesmo se a inbox já tiver sido limpa.
-Um banco DuckDB temporário em disco, com memória configurada em 128 MB, evita
-carregar todos os corpos do dia na RAM; referências e um corpo individual ainda
-ocupam memória. É necessário disco para banco temporário, Parquet e verificação.
+O [escritor incremental PyArrow](https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetWriter.html)
+descarrega lotes no Parquet com até 8 MiB de corpos
+ou 256 respostas. Uma resposta maior é escrita sozinha. Não há tabela intermediária
+acumulando BLOBs do dia; referências, metadados do arquivo, um lote e um corpo
+individual ainda ocupam memória, além dos buffers de conversão/compressão.
+O orçamento do lote não é limite absoluto de memória do processo. É necessário
+disco para o Parquet, o corpo em verificação e os downloads temporários.
 
 O resultado vai para `derived/public-raw/<dia>/<assinatura>.parquet`, com criação
 condicional e manifesto de processamento US12 que registra entradas, hashes,
