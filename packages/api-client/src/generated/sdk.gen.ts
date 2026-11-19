@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DocumentDetailsDocumentsIdentityGetData, DocumentDetailsDocumentsIdentityGetErrors, DocumentDetailsDocumentsIdentityGetResponses, DocumentPdfDocumentsIdentityPdfGetData, DocumentPdfDocumentsIdentityPdfGetErrors, DocumentPdfDocumentsIdentityPdfGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses, SearchDocumentsDocumentsGetData, SearchDocumentsDocumentsGetErrors, SearchDocumentsDocumentsGetResponses } from './types.gen';
+import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DocumentDetailsDocumentsIdentityGetData, DocumentDetailsDocumentsIdentityGetErrors, DocumentDetailsDocumentsIdentityGetResponses, DocumentPdfDocumentsIdentityPdfGetData, DocumentPdfDocumentsIdentityPdfGetErrors, DocumentPdfDocumentsIdentityPdfGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses, SearchDocumentsDocumentsGetData, SearchDocumentsDocumentsGetErrors, SearchDocumentsDocumentsGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -56,6 +56,52 @@ export const catalogNetworkCatalogGet = <ThrowOnError extends boolean = false>(o
 export const routeNetworkRoutesLineIdGet = <ThrowOnError extends boolean = false>(options: Options<RouteNetworkRoutesLineIdGetData, ThrowOnError>) => {
     return (options.client ?? client).get<RouteNetworkRoutesLineIdGetResponses, RouteNetworkRoutesLineIdGetErrors, ThrowOnError>({
         url: '/network/routes/{line_id}',
+        ...options
+    });
+};
+
+/**
+ * Dictionary
+ *
+ * Dicionário da versão raw-responses-parquet-v1, também incluído no arquivo.
+ */
+export const dictionaryExportsRawDictionaryGet = <ThrowOnError extends boolean = false>(options?: Options<DictionaryExportsRawDictionaryGetData, ThrowOnError>) => {
+    return (options?.client ?? client).get<DictionaryExportsRawDictionaryGetResponses, unknown, ThrowOnError>({
+        url: '/exports/raw/dictionary',
+        ...options
+    });
+};
+
+/**
+ * Catalog
+ *
+ * Dias publicados, mais recentes primeiro; paginação por before (exclusivo).
+ */
+export const catalogExportsRawGet = <ThrowOnError extends boolean = false>(options?: Options<CatalogExportsRawGetData, ThrowOnError>) => {
+    return (options?.client ?? client).get<CatalogExportsRawGetResponses, CatalogExportsRawGetErrors, ThrowOnError>({
+        url: '/exports/raw',
+        ...options
+    });
+};
+
+/**
+ * Detail
+ */
+export const detailExportsRawDayGet = <ThrowOnError extends boolean = false>(options: Options<DetailExportsRawDayGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<DetailExportsRawDayGetResponses, DetailExportsRawDayGetErrors, ThrowOnError>({
+        url: '/exports/raw/{day}',
+        ...options
+    });
+};
+
+/**
+ * Download
+ *
+ * Baixa o Parquet publicado; confere o hash antes de enviar qualquer byte.
+ */
+export const downloadExportsRawDayDownloadGet = <ThrowOnError extends boolean = false>(options: Options<DownloadExportsRawDayDownloadGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<DownloadExportsRawDayDownloadGetResponses, DownloadExportsRawDayDownloadGetErrors, ThrowOnError>({
+        url: '/exports/raw/{day}/download',
         ...options
     });
 };

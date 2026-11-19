@@ -153,6 +153,60 @@ export type DocumentView = {
 };
 
 /**
+ * ExportInfo
+ */
+export type ExportInfo = {
+    /**
+     * Dia
+     */
+    dia: string;
+    /**
+     * Publicado Em
+     */
+    publicado_em: string;
+    /**
+     * Prazo
+     */
+    prazo: string;
+    /**
+     * Publicado No Prazo
+     */
+    publicado_no_prazo: boolean;
+    /**
+     * Capturas
+     */
+    capturas: number;
+    /**
+     * Bytes
+     */
+    bytes: number;
+    /**
+     * Sha256
+     */
+    sha256: string;
+    /**
+     * Download
+     */
+    download: string;
+    /**
+     * Licenca
+     */
+    licenca?: string;
+    /**
+     * Fonte
+     */
+    fonte?: string;
+    /**
+     * Fuso
+     */
+    fuso?: string;
+    /**
+     * Cobertura
+     */
+    cobertura?: string;
+};
+
+/**
  * Gap
  */
 export type Gap = {
@@ -735,6 +789,128 @@ export type RouteNetworkRoutesLineIdGetResponses = {
 };
 
 export type RouteNetworkRoutesLineIdGetResponse = RouteNetworkRoutesLineIdGetResponses[keyof RouteNetworkRoutesLineIdGetResponses];
+
+export type DictionaryExportsRawDictionaryGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/exports/raw/dictionary';
+};
+
+export type DictionaryExportsRawDictionaryGetResponses = {
+    /**
+     * Response Dictionary Exports Raw Dictionary Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type DictionaryExportsRawDictionaryGetResponse = DictionaryExportsRawDictionaryGetResponses[keyof DictionaryExportsRawDictionaryGetResponses];
+
+export type CatalogExportsRawGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Before
+         */
+        before?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/exports/raw';
+};
+
+export type CatalogExportsRawGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CatalogExportsRawGetError = CatalogExportsRawGetErrors[keyof CatalogExportsRawGetErrors];
+
+export type CatalogExportsRawGetResponses = {
+    /**
+     * Response Catalog Exports Raw Get
+     *
+     * Successful Response
+     */
+    200: Array<ExportInfo>;
+};
+
+export type CatalogExportsRawGetResponse = CatalogExportsRawGetResponses[keyof CatalogExportsRawGetResponses];
+
+export type DetailExportsRawDayGetData = {
+    body?: never;
+    path: {
+        /**
+         * Day
+         */
+        day: string;
+    };
+    query?: never;
+    url: '/exports/raw/{day}';
+};
+
+export type DetailExportsRawDayGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DetailExportsRawDayGetError = DetailExportsRawDayGetErrors[keyof DetailExportsRawDayGetErrors];
+
+export type DetailExportsRawDayGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ExportInfo;
+};
+
+export type DetailExportsRawDayGetResponse = DetailExportsRawDayGetResponses[keyof DetailExportsRawDayGetResponses];
+
+export type DownloadExportsRawDayDownloadGetData = {
+    body?: never;
+    path: {
+        /**
+         * Day
+         */
+        day: string;
+    };
+    query?: never;
+    url: '/exports/raw/{day}/download';
+};
+
+export type DownloadExportsRawDayDownloadGetErrors = {
+    /**
+     * Dia sem publicação
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Arquivo temporariamente indisponível
+     */
+    503: unknown;
+};
+
+export type DownloadExportsRawDayDownloadGetError = DownloadExportsRawDayDownloadGetErrors[keyof DownloadExportsRawDayDownloadGetErrors];
+
+export type DownloadExportsRawDayDownloadGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type DailyReliabilityReportsReliabilityDayGetData = {
     body?: never;

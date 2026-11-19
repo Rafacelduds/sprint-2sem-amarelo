@@ -13,6 +13,7 @@ Comece pelo [README do projeto](../README.md) para instalar, executar e verifica
 | Publicar lacunas diárias e versões de referência | [Confiabilidade — US13](confiabilidade.md) |
 | Preservar brutos, importar arquivos e registrar proveniência | [Armazenamento](armazenamento-e-proveniencia.md) |
 | Cadastrar, consultar e acessar documentos oficiais | [Acervo documental — US05](acervo-documental.md) |
+| Baixar brutos diários em Parquet e operar a publicação | [Publicação dos brutos](publicacao-brutos.md) |
 | Operar backup diário e recuperar a plataforma | [Backup e restauração](backup-e-restauracao.md) |
 | Fluxo US → código → revisão → entrega | [Contribuição](contribuicao.md) |
 | Formular pedidos, planejar com IA e tratar ambiguidades | [Trabalhar com IA](trabalho-com-ia.md) |
