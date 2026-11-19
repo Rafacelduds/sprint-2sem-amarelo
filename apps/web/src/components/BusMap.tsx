@@ -64,6 +64,8 @@ function BusMap({
   styles,
   routes,
   routeFocus,
+  areaRoutes = false,
+  routeOverview = false,
   onRoutePick,
   fitRequest,
   onBounds,
@@ -77,6 +79,8 @@ function BusMap({
   styles: Map<number, LineStyle>;
   routes: RouteCollection[];
   routeFocus: string | null;
+  areaRoutes?: boolean;
+  routeOverview?: boolean;
   onRoutePick: (labels: string[]) => void;
   fitRequest: number;
   onBounds: (bounds: Bounds) => void;
@@ -368,7 +372,12 @@ function BusMap({
     for (const feature of features) {
       const color =
         styles.get(feature.properties.line_id)?.color ?? UNKNOWN_COLOR;
-      const paint = routePaint(feature.properties.label, routeFocus);
+      const paint = routePaint(
+        feature.properties.label,
+        routeFocus,
+        areaRoutes,
+        routeOverview,
+      );
       for (const segment of feature.geometry.coordinates) {
         const path = segment.map(([lon, lat]) => L.latLng(lat, lon));
         const options = {
@@ -391,7 +400,7 @@ function BusMap({
         }).addTo(layer);
       }
     }
-  }, [routes, styles, routeFocus]);
+  }, [routes, styles, routeFocus, areaRoutes, routeOverview]);
 
   useEffect(() => {
     const instance = map.current;
@@ -401,6 +410,7 @@ function BusMap({
         routes,
         ([lon, lat]) => instance.latLngToContainerPoint([lat, lon]),
         instance.getSize(),
+        (points) => L.LineUtil.simplify(points as L.Point[], 1.5),
       );
     let segments = project();
     const update = () => {

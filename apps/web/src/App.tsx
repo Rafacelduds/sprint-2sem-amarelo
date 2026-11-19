@@ -7,12 +7,7 @@ import VisualizationControls from "./components/VisualizationControls";
 import { readVisual, VISUAL_KEY } from "./visualization";
 import type { GroupSelection } from "./clusters";
 import VehicleList from "./components/VehicleList";
-import {
-  getCatalog,
-  getRoute,
-  type NetworkCatalog,
-  type RouteCollection,
-} from "./api/network";
+import { getCatalog, type NetworkCatalog } from "./api/network";
 import {
   gpsQuality,
   inBounds,
@@ -22,6 +17,7 @@ import {
   type Bounds,
   type Selection,
 } from "./network";
+import { useNetworkRoutes } from "./useNetworkRoutes";
 import { usePositions } from "./usePositions";
 import "./App.css";
 
@@ -30,6 +26,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [visual, setVisual] = useState(readVisual);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [emphasizeAll, setEmphasizeAll] = useState(false);
   const [wantedRouteFocus, setWantedRouteFocus] = useState<string | null>(null);
   const [routePick, setRoutePick] = useState<{
     version: string | null;
@@ -58,9 +55,6 @@ export default function App() {
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [fitRequest, setFitRequest] = useState(0);
   const [catalog, setCatalog] = useState<NetworkCatalog | null>(null);
-  const [routes, setRoutes] = useState<RouteCollection[]>([]);
-  const [routeMissing, setRouteMissing] = useState<number[]>([]);
-  const [loadedRoutesKey, setLoadedRoutesKey] = useState("");
   const [routeRetry, setRouteRetry] = useState(0);
   const styles = useMemo(() => lineStyles(catalog), [catalog]);
   const onBounds = useCallback((value: Bounds) => setBounds(value), []);
@@ -144,40 +138,29 @@ export default function App() {
         .map((l) => l.id),
     [selection, snapshot?.lines, areas, styles],
   );
-  const routeKey = selectedIds.join(",");
-  const expectedRoutesKey = `${catalog?.version}:${routeKey}:${routeRetry}`;
-  const routesLoading = loadedRoutesKey !== expectedRoutesKey;
-  useEffect(() => {
-    const controller = new AbortController();
-    const ids = routeKey ? routeKey.split(",").map(Number) : [];
-    if (!ids.length || !catalog?.version) return;
-    let disposed = false;
-    const version = catalog.version;
-    void Promise.all(
-      ids.map(async (id) => {
-        try {
-          return { id, route: await getRoute(id, version, controller.signal) };
-        } catch {
-          return { id, route: null };
-        }
-      }),
-    ).then((results) => {
-      if (disposed) return;
-      setRoutes(results.flatMap((r) => (r.route ? [r.route] : [])));
-      setRouteMissing(results.filter((r) => !r.route).map((r) => r.id));
-      setLoadedRoutesKey(`${version}:${routeKey}:${routeRetry}`);
-    });
-    return () => {
-      disposed = true;
-      controller.abort();
-    };
-  }, [routeKey, catalog?.version, routeRetry]);
+  const areaRouteScope =
+    areas.length > 0 && Object.keys(selection).length === 0;
+  const routeIds = useMemo(() => {
+    if (!areaRouteScope) return [...selectedIds].sort((a, b) => a - b);
+    return (catalog?.lines ?? [])
+      .filter((line) => areas.includes(String(line.area_id ?? "unknown")))
+      .map((line) => line.line_id)
+      .sort((a, b) => a - b);
+  }, [areaRouteScope, areas, catalog?.lines, selectedIds]);
+  const {
+    routes,
+    missing: routeMissing,
+    completed: routesCompleted,
+    loading: routesLoading,
+  } = useNetworkRoutes(routeIds, catalog?.version, routeRetry);
   function changeSelection(value: Selection) {
     const added = Object.keys(value).filter(
       (label) => selection[label] === undefined,
     );
-    if (added.length) setWantedRouteFocus(added[added.length - 1]);
-    else if (wantedRouteFocus && value[wantedRouteFocus] === undefined)
+    if (added.length) {
+      setWantedRouteFocus(added[added.length - 1]);
+      setEmphasizeAll(false);
+    } else if (wantedRouteFocus && value[wantedRouteFocus] === undefined)
       setWantedRouteFocus(
         Object.keys(value)
           .reverse()
@@ -188,6 +171,8 @@ export default function App() {
   }
   function toggleArea(id: string) {
     setRoutePick(null);
+    if (!Object.keys(selection).length) setWantedRouteFocus(null);
+    setEmphasizeAll(false);
     setAreas((current) =>
       current.includes(id) ? current.filter((a) => a !== id) : [...current, id],
     );
@@ -199,18 +184,19 @@ export default function App() {
         .map((r) => ({
           ...r,
           features: r.features.filter((f) =>
-            selectedIds.includes(f.properties.line_id),
+            routeIds.includes(f.properties.line_id),
           ),
         })),
-    [routes, catalog?.version, selectedIds],
+    [routes, catalog?.version, routeIds],
   );
   const availableLabels = availableRouteLabels(activeRoutes);
   const routeFocus = effectiveRouteFocus(
     wantedRouteFocus,
-    Object.keys(selection),
+    areaRouteScope ? [...availableLabels] : Object.keys(selection),
     availableLabels,
   );
   const chooseRoute = useCallback((label: string) => {
+    setEmphasizeAll(false);
     setWantedRouteFocus(label);
     setRoutePick(null);
     setSelectedId(null);
@@ -221,6 +207,7 @@ export default function App() {
       if (!labels.length) return;
       setSelectedId(null);
       setGroup(null);
+      setEmphasizeAll(false);
       if (labels.length === 1) {
         setWantedRouteFocus(labels[0]);
         setRoutePick(null);
@@ -265,6 +252,8 @@ export default function App() {
           styles={styles}
           routes={activeRoutes}
           routeFocus={routeFocus}
+          areaRoutes={areaRouteScope}
+          routeOverview={areaRouteScope && routeFocus === null && !emphasizeAll}
           onRoutePick={onRoutePick}
           now={Math.floor(observedNow / 15000) * 15000}
           onBounds={onBounds}
@@ -361,12 +350,25 @@ export default function App() {
           />
           <RouteFocusPanel
             available={availableLabels.size}
+            overview={areaRouteScope && routeFocus === null && !emphasizeAll}
             focus={routeFocus}
+            destinations={[
+              ...new Set(
+                activeRoutes
+                  .flatMap((route) => route.features)
+                  .filter((feature) => feature.properties.label === routeFocus)
+                  .map(
+                    (feature) =>
+                      `Sentido ${feature.properties.direction}: ${feature.properties.destination || "Destino não informado"}`,
+                  ),
+              ),
+            ]}
             candidates={routeCandidates}
             scrollRequest={routeScrollRequest}
             onChoose={chooseRoute}
             onAll={() => {
               setWantedRouteFocus(null);
+              setEmphasizeAll(true);
               setRoutePick(null);
             }}
             onDismiss={() => setRoutePick(null)}
@@ -589,20 +591,22 @@ export default function App() {
               Limpar filtros
             </button>
           </div>
-          {!!selectedLabels.length && (
-            <p className="route-note">
+          {(selectedLabels.length > 0 || areas.length > 0) && (
+            <p className="route-note" role="status">
               {!catalog?.version
                 ? "Percurso planejado indisponível: nenhuma referência GTFS carregada."
-                : !selectedIds.length
-                  ? "Nenhum sentido selecionado nas áreas filtradas."
+                : !routeIds.length
+                  ? "Nenhum percurso associado às áreas selecionadas no catálogo atual."
                   : routesLoading
-                    ? "Carregando percursos…"
+                    ? `Carregando percursos… ${routesCompleted} de ${routeIds.length} sentidos consultados.`
                     : routeMissing.length
-                      ? `Percurso planejado indisponível em ${routeMissing.length} sentidos nesta versão.`
+                      ? areaRouteScope
+                        ? `${availableLabels.size} linhas exibidas · ${routeMissing.length} sentidos sem percurso nesta versão.`
+                        : `Percurso planejado indisponível em ${routeMissing.length} sentidos nesta versão.`
                       : "Percursos planejados · versão GTFS identificada."}
             </p>
           )}
-          {!!selectedLabels.length &&
+          {(selectedLabels.length > 0 || areas.length > 0) &&
             !!routeMissing.length &&
             !routesLoading && (
               <button

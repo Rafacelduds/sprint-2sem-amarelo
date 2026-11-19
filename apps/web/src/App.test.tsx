@@ -539,3 +539,55 @@ describe("Foco dos percursos", () => {
     ).toBeDisabled();
   });
 });
+
+it("shows area routes without selecting lines, focuses them without filtering, and reuses loaded geometry", async () => {
+  const fetch = respondWithRoutes();
+  render(<App />);
+  await screen.findByText("Atualização ativa");
+  expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+  fireEvent.click(screen.getByLabelText(/2 · Norte/));
+  await waitFor(() =>
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/),
+  );
+  expect(
+    screen.getByText(/Percursos das áreas · 1 linhas/),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByLabelText("Linhas selecionadas"),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Clicar percurso único" }),
+  );
+  expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+  expect(screen.getByTestId("map")).toHaveTextContent("100,110");
+  fireEvent.click(screen.getByLabelText(/8 · Oeste/));
+  await waitFor(() =>
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11,2$/),
+  );
+  const routeCalls = () =>
+    fetch.mock.calls.filter(([url]) => String(url).includes("/network/routes/"))
+      .length;
+  expect(routeCalls()).toBe(3);
+  fireEvent.click(screen.getByLabelText(/2 · Norte/));
+  expect(screen.getByTestId("routes")).toHaveTextContent(/^2$/);
+  fireEvent.click(screen.getByLabelText(/2 · Norte/));
+  await waitFor(() =>
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^2,1,11$|^1,11,2$/),
+  );
+  expect(routeCalls()).toBe(3);
+  fireEvent.click(screen.getByRole("button", { name: /^5015-10/ }));
+  expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/);
+  expect(screen.getByTestId("map")).toHaveTextContent("100,110");
+  fireEvent.change(screen.getByLabelText("Sentido da linha 5015-10"), {
+    target: { value: "2" },
+  });
+  expect(screen.getByTestId("routes")).toHaveTextContent(/^11$/);
+});
+it("does not infer routes for an area with no catalog mapping", async () => {
+  respond();
+  render(<App />);
+  await screen.findByText("Atualização ativa");
+  fireEvent.click(screen.getByLabelText(/Área não identificada/));
+  expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+  expect(screen.getByText(/Nenhum percurso associado/)).toBeInTheDocument();
+});

@@ -25,14 +25,14 @@ export function projectRoutes(
   routes: RouteCollection[],
   project: (coordinate: [number, number]) => Point,
   size: Point,
+  simplify: (points: Point[]) => Point[] = (points) => points,
 ): ProjectedSegment[] {
   const segments: ProjectedSegment[] = [];
   for (const route of routes)
     for (const feature of route.features)
       for (const path of feature.geometry.coordinates) {
         let a: Point | undefined;
-        for (const coordinate of path) {
-          const b = project(coordinate);
+        for (const b of simplify(path.map(project))) {
           if (
             a &&
             Math.max(a.x, b.x) >= -8 &&
@@ -81,7 +81,15 @@ export function routesNearPoint(
     .sort(([a, da], [b, db]) => da - db || a.localeCompare(b))
     .map(([label]) => label);
 }
-export function routePaint(label: string, focus: string | null) {
+export function routePaint(
+  label: string,
+  focus: string | null,
+  area = false,
+  overview = false,
+) {
+  if (overview) return { weight: 2.5, opacity: 0.45, casing: false };
+  if (area && focus !== null && focus !== label)
+    return { weight: 2.5, opacity: 0.2, casing: false };
   return focus === null
     ? { weight: 4, opacity: 0.75, casing: true }
     : focus === label
