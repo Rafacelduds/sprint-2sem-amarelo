@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BusMap from "./components/BusMap";
+import RouteFocusPanel from "./components/RouteFocusPanel";
+import { availableRouteLabels, effectiveRouteFocus } from "./routeFocus";
+import PositionDetails from "./components/PositionDetails";
+import VisualizationControls from "./components/VisualizationControls";
+import { readVisual, VISUAL_KEY } from "./visualization";
+import type { GroupSelection } from "./clusters";
 import VehicleList from "./components/VehicleList";
-import {
-  getCatalog,
-  getRoute,
-  type NetworkCatalog,
-  type RouteCollection,
-} from "./api/network";
+import { getCatalog, type NetworkCatalog } from "./api/network";
 import {
   gpsQuality,
   inBounds,
@@ -16,20 +17,44 @@ import {
   type Bounds,
   type Selection,
 } from "./network";
+import { useNetworkRoutes } from "./useNetworkRoutes";
 import { usePositions } from "./usePositions";
 import "./App.css";
 
 export default function MapPage() {
   const { snapshot, error, loading, now, stale, age, retry } = usePositions();
   const [query, setQuery] = useState("");
+  const [visual, setVisual] = useState(readVisual);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [emphasizeAll, setEmphasizeAll] = useState(false);
+  const [wantedRouteFocus, setWantedRouteFocus] = useState<string | null>(null);
+  const [routePick, setRoutePick] = useState<{
+    version: string | null;
+    labels: string[];
+  } | null>(null);
+  const [routeScrollRequest, setRouteScrollRequest] = useState(0);
+  const [group, setGroup] = useState<GroupSelection | null>(null);
+  const onSelect = useCallback((id: string) => {
+    setSelectedId(id);
+    setRoutePick(null);
+    setGroup(null);
+  }, []);
+  const onGroup = useCallback((value: GroupSelection | null) => {
+    setGroup(value);
+    if (value) setSelectedId(null);
+  }, []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(VISUAL_KEY, JSON.stringify(visual));
+    } catch {
+      /* Optional local preference storage. */
+    }
+  }, [visual]);
   const [selection, setSelection] = useState<Selection>({});
   const [areas, setAreas] = useState<string[]>([]);
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [fitRequest, setFitRequest] = useState(0);
   const [catalog, setCatalog] = useState<NetworkCatalog | null>(null);
-  const [routes, setRoutes] = useState<RouteCollection[]>([]);
-  const [routeMissing, setRouteMissing] = useState<number[]>([]);
-  const [loadedRoutesKey, setLoadedRoutesKey] = useState("");
   const [routeRetry, setRouteRetry] = useState(0);
   const styles = useMemo(() => lineStyles(catalog), [catalog]);
   const onBounds = useCallback((value: Bounds) => setBounds(value), []);
@@ -59,6 +84,7 @@ export default function MapPage() {
           ),
     [snapshot, stale, selection, areas, styles],
   );
+  const selectedVehicle = vehicles.find((bus) => bus.id === selectedId) ?? null;
   const visible = useMemo(
     () => vehicles.filter((bus) => inBounds(bus, bounds)),
     [vehicles, bounds],
@@ -112,38 +138,41 @@ export default function MapPage() {
         .map((l) => l.id),
     [selection, snapshot?.lines, areas, styles],
   );
-  const routeKey = selectedIds.join(",");
-  const expectedRoutesKey = `${catalog?.version}:${routeKey}:${routeRetry}`;
-  const routesLoading = loadedRoutesKey !== expectedRoutesKey;
-  useEffect(() => {
-    const controller = new AbortController();
-    const ids = routeKey ? routeKey.split(",").map(Number) : [];
-    if (!ids.length || !catalog?.version) return;
-    let disposed = false;
-    const version = catalog.version;
-    void Promise.all(
-      ids.map(async (id) => {
-        try {
-          return { id, route: await getRoute(id, version, controller.signal) };
-        } catch {
-          return { id, route: null };
-        }
-      }),
-    ).then((results) => {
-      if (disposed) return;
-      setRoutes(results.flatMap((r) => (r.route ? [r.route] : [])));
-      setRouteMissing(results.filter((r) => !r.route).map((r) => r.id));
-      setLoadedRoutesKey(`${version}:${routeKey}:${routeRetry}`);
-    });
-    return () => {
-      disposed = true;
-      controller.abort();
-    };
-  }, [routeKey, catalog?.version, routeRetry]);
+  const areaRouteScope =
+    areas.length > 0 && Object.keys(selection).length === 0;
+  const routeIds = useMemo(() => {
+    if (!areaRouteScope) return [...selectedIds].sort((a, b) => a - b);
+    return (catalog?.lines ?? [])
+      .filter((line) => areas.includes(String(line.area_id ?? "unknown")))
+      .map((line) => line.line_id)
+      .sort((a, b) => a - b);
+  }, [areaRouteScope, areas, catalog?.lines, selectedIds]);
+  const {
+    routes,
+    missing: routeMissing,
+    completed: routesCompleted,
+    loading: routesLoading,
+  } = useNetworkRoutes(routeIds, catalog?.version, routeRetry);
   function changeSelection(value: Selection) {
+    const added = Object.keys(value).filter(
+      (label) => selection[label] === undefined,
+    );
+    if (added.length) {
+      setWantedRouteFocus(added[added.length - 1]);
+      setEmphasizeAll(false);
+    } else if (wantedRouteFocus && value[wantedRouteFocus] === undefined)
+      setWantedRouteFocus(
+        Object.keys(value)
+          .reverse()
+          .find((label) => availableLabels.has(label)) ?? null,
+      );
+    setRoutePick(null);
     setSelection(value);
   }
   function toggleArea(id: string) {
+    setRoutePick(null);
+    if (!Object.keys(selection).length) setWantedRouteFocus(null);
+    setEmphasizeAll(false);
     setAreas((current) =>
       current.includes(id) ? current.filter((a) => a !== id) : [...current, id],
     );
@@ -155,11 +184,42 @@ export default function MapPage() {
         .map((r) => ({
           ...r,
           features: r.features.filter((f) =>
-            selectedIds.includes(f.properties.line_id),
+            routeIds.includes(f.properties.line_id),
           ),
         })),
-    [routes, catalog?.version, selectedIds],
+    [routes, catalog?.version, routeIds],
   );
+  const availableLabels = availableRouteLabels(activeRoutes);
+  const routeFocus = effectiveRouteFocus(
+    wantedRouteFocus,
+    areaRouteScope ? [...availableLabels] : Object.keys(selection),
+    availableLabels,
+  );
+  const chooseRoute = useCallback((label: string) => {
+    setEmphasizeAll(false);
+    setWantedRouteFocus(label);
+    setRoutePick(null);
+    setSelectedId(null);
+    setGroup(null);
+  }, []);
+  const onRoutePick = useCallback(
+    (labels: string[]) => {
+      if (!labels.length) return;
+      setSelectedId(null);
+      setGroup(null);
+      setEmphasizeAll(false);
+      if (labels.length === 1) {
+        setWantedRouteFocus(labels[0]);
+        setRoutePick(null);
+      } else setRoutePick({ version: catalog?.version ?? null, labels });
+      setRouteScrollRequest((request) => request + 1);
+    },
+    [catalog?.version],
+  );
+  const routeCandidates =
+    routePick?.version === catalog?.version
+      ? (routePick?.labels.filter((label) => availableLabels.has(label)) ?? [])
+      : [];
   const collected = snapshot
     ? new Date(snapshot.collected_at).toLocaleTimeString("pt-BR", {
         timeZone: "America/Sao_Paulo",
@@ -185,9 +245,16 @@ export default function MapPage() {
       <section className="map-surface" aria-label="Monitoramento ao vivo">
         <BusMap
           vehicles={vehicles}
-          selection={selection}
+          visual={visual}
+          selected={selectedVehicle}
+          onSelect={onSelect}
+          onGroup={onGroup}
           styles={styles}
           routes={activeRoutes}
+          routeFocus={routeFocus}
+          areaRoutes={areaRouteScope}
+          routeOverview={areaRouteScope && routeFocus === null && !emphasizeAll}
+          onRoutePick={onRoutePick}
           now={Math.floor(observedNow / 15000) * 15000}
           onBounds={onBounds}
           fitRequest={fitRequest}
@@ -268,6 +335,62 @@ export default function MapPage() {
               </p>
             </details>
           </section>
+          <PositionDetails
+            selectedId={selectedId}
+            vehicle={selectedVehicle}
+            group={group}
+            styles={styles}
+            collectedAt={snapshot?.collected_at ?? null}
+            now={observedNow}
+            onSelect={onSelect}
+            onClose={() => {
+              setSelectedId(null);
+              setGroup(null);
+            }}
+          />
+          <RouteFocusPanel
+            available={availableLabels.size}
+            overview={areaRouteScope && routeFocus === null && !emphasizeAll}
+            focus={routeFocus}
+            destinations={[
+              ...new Set(
+                activeRoutes
+                  .flatMap((route) => route.features)
+                  .filter((feature) => feature.properties.label === routeFocus)
+                  .map(
+                    (feature) =>
+                      `Sentido ${feature.properties.direction}: ${feature.properties.destination || "Destino não informado"}`,
+                  ),
+              ),
+            ]}
+            candidates={routeCandidates}
+            scrollRequest={routeScrollRequest}
+            onChoose={chooseRoute}
+            onAll={() => {
+              setWantedRouteFocus(null);
+              setEmphasizeAll(true);
+              setRoutePick(null);
+            }}
+            onDismiss={() => setRoutePick(null)}
+          />
+          <VisualizationControls value={visual} onChange={setVisual} />
+          {visual.mode !== "clusters" && (
+            <section
+              className="density-legend"
+              aria-label="Legenda de densidade"
+            >
+              <strong>Concentração de posições observadas</strong>
+              <div className="density-scale" />
+              <div className="density-labels">
+                <span>Menor</span>
+                <span>Maior</span>
+              </div>
+              <p>
+                Inclui GPS antigo ou sem horário. A intensidade varia com o
+                zoom; não indica cobertura, demanda ou qualidade do serviço.
+              </p>
+            </section>
+          )}
           <details className="area-filter">
             <summary>
               Áreas de operação{" "}
@@ -307,7 +430,8 @@ export default function MapPage() {
           </details>
           {catalog?.status !== "ready" && (
             <p className="catalog-note">
-              Cores e percursos planejados indisponíveis no momento. As posições continuam disponíveis.
+              Cores e percursos planejados indisponíveis no momento. As posições
+              continuam disponíveis.
             </p>
           )}
           {catalog?.synthetic && (
@@ -346,7 +470,16 @@ export default function MapPage() {
                     key={label}
                     style={{ borderLeftColor: colors[0] }}
                   >
-                    <span>{label}</span>
+                    <button
+                      className="line-focus-button"
+                      aria-label={`Destacar linha ${label}`}
+                      aria-pressed={routeFocus === label}
+                      disabled={!availableLabels.has(label)}
+                      onClick={() => chooseRoute(label)}
+                    >
+                      {label}
+                      {routeFocus === label && <small>Em foco</small>}
+                    </button>
                     <select
                       aria-label={`Sentido da linha ${label}`}
                       value={selection[label]}
@@ -444,7 +577,7 @@ export default function MapPage() {
           <div className="selection-actions">
             <button
               onClick={() => setFitRequest((v) => v + 1)}
-              disabled={!vehicles.length}
+              disabled={!vehicles.length && !availableLabels.size}
             >
               Enquadrar seleção
             </button>
@@ -458,20 +591,22 @@ export default function MapPage() {
               Limpar filtros
             </button>
           </div>
-          {!!selectedLabels.length && (
-            <p className="route-note">
+          {(selectedLabels.length > 0 || areas.length > 0) && (
+            <p className="route-note" role="status">
               {!catalog?.version
                 ? "Percurso planejado indisponível: nenhuma referência GTFS carregada."
-                : !selectedIds.length
-                  ? "Nenhum sentido selecionado nas áreas filtradas."
+                : !routeIds.length
+                  ? "Nenhum percurso associado às áreas selecionadas no catálogo atual."
                   : routesLoading
-                    ? "Carregando percursos…"
+                    ? `Carregando percursos… ${routesCompleted} de ${routeIds.length} sentidos consultados.`
                     : routeMissing.length
-                      ? `Percurso planejado indisponível em ${routeMissing.length} sentidos nesta versão.`
+                      ? areaRouteScope
+                        ? `${availableLabels.size} linhas exibidas · ${routeMissing.length} sentidos sem percurso nesta versão.`
+                        : `Percurso planejado indisponível em ${routeMissing.length} sentidos nesta versão.`
                       : "Percursos planejados · versão GTFS identificada."}
             </p>
           )}
-          {!!selectedLabels.length &&
+          {(selectedLabels.length > 0 || areas.length > 0) &&
             !!routeMissing.length &&
             !routesLoading && (
               <button
@@ -481,7 +616,7 @@ export default function MapPage() {
                 Tentar carregar percursos
               </button>
             )}
-          <VehicleList vehicles={visible} />
+          <VehicleList vehicles={visible} onSelect={onSelect} />
         </div>
         <footer className="explorer-footer">
           <span className={`status-dot ${error || stale ? "offline" : ""}`} />
@@ -504,7 +639,12 @@ export default function MapPage() {
           {selectedLabels.length
             ? `${selectedLabels.length} linhas na comparação`
             : "Visão geral da rede"}{" "}
-          · grupos por proximidade
+          ·{" "}
+          {visual.mode === "density"
+            ? "densidade de posições"
+            : visual.mode === "mixed"
+              ? "densidade e grupos"
+              : "grupos por proximidade"}
         </span>
       </div>
       {(stale || error) && (
@@ -525,7 +665,8 @@ export default function MapPage() {
           desconhecida em cinza.
         </p>
         <p>
-          Bolhas neutras mostram quantidades de ônibus; amplie para ver as
+          O centro dos grupos mostra a quantidade de posições; os anéis
+          representam cores compartilhadas pelas linhas. Amplie para ver as
           posições individuais. Sentido 1: traço contínuo · sentido 2:
           tracejado. GPS antigo/desconhecido: ponto vazado e menor opacidade.
         </p>

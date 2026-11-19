@@ -19,7 +19,17 @@ vi.mock("./components/BusMap", () => ({
     vehicles,
     routes,
     onBounds,
+    onSelect,
+    visual,
+    routeFocus,
+    onRoutePick,
+    fitRequest,
   }: {
+    onSelect: (id: string) => void;
+    routeFocus: string | null;
+    fitRequest: number;
+    onRoutePick: (labels: string[]) => void;
+    visual: { mode: string; busDiameter: number; groupScale: number };
     vehicles: Vehicle[];
     routes: RouteCollection[];
     onBounds: (b: Bounds) => void;
@@ -30,6 +40,20 @@ vi.mock("./components/BusMap", () => ({
     );
     return (
       <div>
+        <div data-testid="visual-mode">
+          {visual.mode}:{visual.busDiameter}:{visual.groupScale}
+        </div>
+        <button onClick={() => onSelect(vehicles[0].id)}>
+          Selecionar ônibus no mapa
+        </button>
+        <output data-testid="fit-request">{fitRequest}</output>
+        <div data-testid="route-focus">{routeFocus ?? "all"}</div>
+        <button onClick={() => onRoutePick(["5015-10"])}>
+          Clicar percurso único
+        </button>
+        <button onClick={() => onRoutePick(["5015-10", "701A-10"])}>
+          Clicar trecho compartilhado
+        </button>
         <div data-testid="map">{vehicles.map((v) => v.id).join(",")}</div>
         <div data-testid="routes">
           {routes
@@ -160,6 +184,7 @@ function respondWithRoutes() {
   });
 }
 afterEach(() => {
+  window.localStorage.clear();
   cleanup();
   vi.restoreAllMocks();
   vi.useRealTimers();
@@ -278,7 +303,9 @@ describe("Rede pública", () => {
     render(<App />);
     await screen.findByText("Atualização ativa");
     expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
-    expect(screen.getByText(/Cores e percursos planejados indisponíveis/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Cores e percursos planejados indisponíveis/),
+    ).toBeInTheDocument();
   });
   it("does not display expired positions as live", async () => {
     respond(61);
@@ -307,4 +334,312 @@ describe("Rede pública", () => {
     expect(screen.getByTestId("map")).toBeEmptyDOMElement();
     expect(screen.getByText("As posições expiraram")).toBeInTheDocument();
   });
+});
+
+describe("Visualização e detalhes", () => {
+  it("switches modes, persists preferences, and restores defaults without changing filters", async () => {
+    respondWithRoutes();
+    const first = render(<App />);
+    await screen.findByRole("button", { name: /5015-10/ });
+    fireEvent.click(screen.getByRole("button", { name: /5015-10/ }));
+    fireEvent.click(screen.getByText("Mais opções", { exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Misto" }));
+    fireEvent.change(
+      screen.getByRole("slider", { name: /Tamanho dos ônibus/ }),
+      { target: { value: "18" } },
+    );
+    fireEvent.change(
+      screen.getByRole("slider", { name: /Tamanho geral dos grupos/ }),
+      { target: { value: "150" } },
+    );
+    expect(screen.getByTestId("visual-mode")).toHaveTextContent("mixed:18:1.5");
+    expect(screen.getByTestId("map")).toHaveTextContent("100,110");
+    fireEvent.click(screen.getByRole("button", { name: "Calor" }));
+    expect(
+      screen.queryByRole("slider", { name: /Tamanho geral dos grupos/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/Inclui GPS antigo/)).toBeInTheDocument();
+    first.unmount();
+    render(<App />);
+    expect(screen.getByTestId("visual-mode")).toHaveTextContent(
+      "density:18:1.5",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar padrões" }));
+    expect(screen.getByTestId("visual-mode")).toHaveTextContent("clusters:9:1");
+  });
+  it("opens details above filters, keeps selection during navigation, and reports filtering out", async () => {
+    respond();
+    render(<App />);
+    await screen.findByRole("button", { name: /5015-10/ });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Selecionar ônibus no mapa" }),
+    );
+    expect(
+      screen.getByRole("region", { name: "Detalhes da seleção" }),
+    ).toHaveTextContent("Ônibus 100");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Mover mapa de teste" }),
+    );
+    expect(
+      screen.getByRole("region", { name: "Detalhes da seleção" }),
+    ).toHaveTextContent("Ônibus 100");
+    fireEvent.click(screen.getByRole("button", { name: /701A-10/ }));
+    expect(
+      within(
+        screen.getByRole("region", { name: "Detalhes da seleção" }),
+      ).getByRole("status"),
+    ).toHaveTextContent("deixou de estar disponível");
+    fireEvent.click(screen.getByRole("button", { name: "Fechar detalhes" }));
+    expect(
+      screen.queryByRole("region", { name: "Detalhes da seleção" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+it("keeps the map usable when saving visual preferences is blocked", async () => {
+  vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+    throw new Error("quota");
+  });
+  respond();
+  render(<App />);
+  await screen.findByRole("button", { name: /5015-10/ });
+  fireEvent.click(screen.getByRole("button", { name: "Calor" }));
+  expect(screen.getByTestId("visual-mode")).toHaveTextContent("density:9:1");
+  expect(screen.getByTestId("map")).toHaveTextContent("100");
+});
+
+it("shows a simple mode choice and only the relevant controls, persisting intensity and size style", async () => {
+  respond();
+  const first = render(<App />);
+  await screen.findByText("Atualização ativa");
+  const panel = within(screen.getByRole("region", { name: "Visualização" }));
+  expect(
+    panel.getByRole("button", { name: "Grupos", pressed: true }),
+  ).toBeVisible();
+  expect(panel.getByText("Mais opções").closest("details")).not.toHaveAttribute(
+    "open",
+  );
+  fireEvent.click(panel.getByRole("button", { name: "Calor" }));
+  expect(panel.getAllByRole("slider")).toHaveLength(1);
+  expect(
+    panel.queryByRole("button", { name: "Mesmo tamanho" }),
+  ).not.toBeInTheDocument();
+  fireEvent.change(
+    panel.getByRole("slider", { name: "Intensidade do calor" }),
+    { target: { value: "175" } },
+  );
+  fireEvent.click(panel.getByRole("button", { name: "Misto" }));
+  fireEvent.click(panel.getByRole("button", { name: "Mesmo tamanho" }));
+  expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
+  first.unmount();
+  render(<App />);
+  expect(
+    screen.getByRole("button", { name: "Misto", pressed: true }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Mesmo tamanho", pressed: true }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("slider", { name: "Intensidade do calor" }),
+  ).toHaveValue("175");
+  fireEvent.click(screen.getByRole("button", { name: "Restaurar padrões" }));
+  expect(
+    screen.getByRole("button", { name: "Grupos", pressed: true }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Por quantidade", pressed: true }),
+  ).toBeVisible();
+  expect(
+    screen.getByText("Mais opções").closest("details"),
+  ).not.toHaveAttribute("open");
+});
+
+describe("Foco dos percursos", () => {
+  it("focuses additions, switches focus without requests or filter changes, and falls back on removal", async () => {
+    const fetch = respondWithRoutes();
+    render(<App />);
+    await screen.findByRole("button", { name: /^5015-10/ });
+    fireEvent.click(screen.getByRole("button", { name: /^5015-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^701A-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route-focus")).toHaveTextContent("701A-10"),
+    );
+    const calls = fetch.mock.calls.length;
+    fireEvent.click(
+      screen.getByRole("button", { name: "Destacar linha 5015-10" }),
+    );
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+    expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
+    fireEvent.click(screen.getByRole("button", { name: "Destacar todas" }));
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("all");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clicar percurso único" }),
+    );
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+    expect(fetch.mock.calls.length).toBe(calls);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remover linha 5015-10" }),
+    );
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("701A-10");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remover linha 701A-10" }),
+    );
+    expect(
+      screen.queryByRole("region", { name: "Destaque dos percursos" }),
+    ).not.toBeInTheDocument();
+  });
+  it("asks in the panel for overlapping lines and closes vehicle details", async () => {
+    respondWithRoutes();
+    render(<App />);
+    await screen.findByRole("button", { name: /^5015-10/ });
+    fireEvent.click(screen.getByRole("button", { name: /^5015-10/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^701A-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route-focus")).toHaveTextContent("701A-10"),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Selecionar ônibus no mapa" }),
+    );
+    expect(
+      screen.getByRole("region", { name: "Detalhes da seleção" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clicar trecho compartilhado" }),
+    );
+    expect(
+      screen.queryByRole("region", { name: "Detalhes da seleção" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Linhas neste trecho")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Escolher linha 5015-10" }),
+    );
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+    expect(screen.queryByText("Linhas neste trecho")).not.toBeInTheDocument();
+    expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
+  });
+  it("keeps available focus when the last added line has no geometry", async () => {
+    const fetch = respondWithRoutes();
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (...args) =>
+      String(args[0]).includes("/network/routes/2?")
+        ? new Response("{}", { status: 404 })
+        : original(...args),
+    );
+    render(<App />);
+    await screen.findByRole("button", { name: /^5015-10/ });
+    fireEvent.click(screen.getByRole("button", { name: /^5015-10/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^701A-10/ }));
+    await screen.findByText(/Percurso planejado indisponível em 1 sentidos/);
+    expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+    expect(
+      screen.getByRole("button", { name: "Destacar linha 701A-10" }),
+    ).toBeDisabled();
+  });
+});
+
+it("shows area routes without selecting lines, focuses them without filtering, and reuses loaded geometry", async () => {
+  const fetch = respondWithRoutes();
+  render(<App />);
+  await screen.findByText("Atualização ativa");
+  expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+  fireEvent.click(screen.getByLabelText(/2 · Norte/));
+  await waitFor(() =>
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/),
+  );
+  expect(
+    screen.getByText(/Percursos das áreas · 1 linhas/),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByLabelText("Linhas selecionadas"),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Clicar percurso único" }),
+  );
+  expect(screen.getByTestId("route-focus")).toHaveTextContent("5015-10");
+  expect(screen.getByTestId("map")).toHaveTextContent("100,110");
+  fireEvent.click(screen.getByLabelText(/8 · Oeste/));
+  await waitFor(() =>
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11,2$/),
+  );
+  const routeCalls = () =>
+    fetch.mock.calls.filter(([url]) => String(url).includes("/network/routes/"))
+      .length;
+  expect(routeCalls()).toBe(3);
+  fireEvent.click(screen.getByLabelText(/2 · Norte/));
+  expect(screen.getByTestId("routes")).toHaveTextContent(/^2$/);
+  fireEvent.click(screen.getByLabelText(/2 · Norte/));
+  await waitFor(() =>
+    expect(screen.getByTestId("routes")).toHaveTextContent(/^2,1,11$|^1,11,2$/),
+  );
+  expect(routeCalls()).toBe(3);
+  fireEvent.click(screen.getByRole("button", { name: /^5015-10/ }));
+  expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/);
+  expect(screen.getByTestId("map")).toHaveTextContent("100,110");
+  fireEvent.change(screen.getByLabelText("Sentido da linha 5015-10"), {
+    target: { value: "2" },
+  });
+  expect(screen.getByTestId("routes")).toHaveTextContent(/^11$/);
+});
+it("does not infer routes for an area with no catalog mapping", async () => {
+  respond();
+  render(<App />);
+  await screen.findByText("Atualização ativa");
+  fireEvent.click(screen.getByLabelText(/Área não identificada/));
+  expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+  expect(screen.getByText(/Nenhum percurso associado/)).toBeInTheDocument();
+});
+
+it.each(["empty", "expired", "offline"])(
+  "fits available area routes when positions are %s",
+  async (state) => {
+    const fetch = respondWithRoutes();
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (...args) => {
+      if (String(args[0]).includes("/network/")) return original(...args);
+      if (state === "offline") throw new Error("positions unavailable");
+      const payload = snapshot(state === "expired" ? 61 : 0);
+      return new Response(
+        JSON.stringify(
+          state === "empty" ? { ...payload, vehicles: [], lines: [] } : payload,
+        ),
+      );
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByLabelText(/2 · Norte/));
+    await waitFor(() =>
+      expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/),
+    );
+    expect(screen.getByTestId("map")).toBeEmptyDOMElement();
+    const fit = screen.getByRole("button", { name: "Enquadrar seleção" });
+    expect(fit).toBeEnabled();
+    expect(screen.getByTestId("fit-request")).toHaveTextContent("0");
+    fireEvent.click(fit);
+    expect(screen.getByTestId("fit-request")).toHaveTextContent("1");
+  },
+);
+it("keeps fitting disabled without positions or drawable routes", async () => {
+  const fetch = respondWithRoutes();
+  const original = fetch.getMockImplementation()!;
+  fetch.mockImplementation(async (...args) => {
+    const url = String(args[0]);
+    if (url.includes("/network/routes/"))
+      return new Response("{}", { status: 404 });
+    if (url.includes("/network/catalog")) return original(...args);
+    return new Response(
+      JSON.stringify({ ...snapshot(), vehicles: [], lines: [] }),
+    );
+  });
+  render(<App />);
+  fireEvent.click(await screen.findByLabelText(/2 · Norte/));
+  await screen.findByText(/0 linhas exibidas/);
+  expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+  expect(
+    screen.getByRole("button", { name: "Enquadrar seleção" }),
+  ).toBeDisabled();
 });

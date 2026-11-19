@@ -77,12 +77,12 @@ describe("Agrupamentos espaciais", () => {
     expect(pages.map((p) => p.length)).toEqual([10, 10, 3]);
     expect(new Set(pages.flat().map((b) => b.id)).size).toBe(23);
   });
-  it("handles filtering to empty and keeps cluster diameters within 24–32 pixels", () => {
+  it("handles filtering to empty and keeps proportional cluster diameters within 24–64 pixels", () => {
     expect(createBusIndex([]).getClusters(world, 12)).toEqual([]);
     for (const count of [2, 9, 10, 99, 100, 10000])
       expect(clusterDiameter(count)).toBeGreaterThanOrEqual(24);
     for (const count of [2, 9, 10, 99, 100, 10000])
-      expect(clusterDiameter(count)).toBeLessThanOrEqual(32);
+      expect(clusterDiameter(count)).toBeLessThanOrEqual(64);
   });
   it("does not change the index when querying multiple viewports", () => {
     const index = createBusIndex(
@@ -102,4 +102,37 @@ describe("Agrupamentos espaciais", () => {
       ),
     ).toBe(10000);
   });
+});
+
+// Histograms must remain correct in child clusters after parents are reduced.
+describe("Composição dos agrupamentos", () => {
+  it("keeps histograms equal to their leaves at every zoom, including unknown/shared colors", () => {
+    const buses = Array.from({ length: 240 }, (_, i) =>
+      bus(i, -23.5 + (i % 12) * 0.001, -46.6 + Math.floor(i / 12) * 0.001),
+    );
+    const styles = new Map([[1, { area: 2, color: "#002F6C" }]]);
+    const index = createBusIndex(buses, styles);
+    for (let zoom = 9; zoom <= MAP_MAX_ZOOM; zoom++) {
+      for (const point of index.getClusters(world, zoom)) {
+        if (!isCluster(point)) continue;
+        const leaves = index.getLeaves(point.properties.cluster_id, Infinity);
+        const expected: Record<string, number> = {};
+        for (const leaf of leaves) {
+          const color =
+            leaf.properties.bus.line_id === 1 ? "#002F6C" : "#78838B";
+          expected[color] = (expected[color] ?? 0) + 1;
+        }
+        expect(point.properties.colors).toEqual(expected);
+        expect(
+          Object.values(point.properties.colors).reduce((a, b) => a + b, 0),
+        ).toBe(point.properties.point_count);
+      }
+    }
+  });
+});
+
+it("makes count differences clear while offering truly uniform group sizes", () => {
+  expect(clusterDiameter(100)).toBeGreaterThan(clusterDiameter(10) * 2.5);
+  expect(clusterDiameter(10, "uniform")).toBe(clusterDiameter(100, "uniform"));
+  expect(clusterDiameter(10000)).toBeLessThanOrEqual(64);
 });

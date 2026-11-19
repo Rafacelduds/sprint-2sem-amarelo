@@ -6,7 +6,13 @@ const formatter = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "medium",
   timeZone: "America/Sao_Paulo",
 });
-function VehicleList({ vehicles }: { vehicles: Vehicle[] }) {
+function VehicleList({
+  vehicles,
+  onSelect,
+}: {
+  vehicles: Vehicle[];
+  onSelect?: (id: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
   const lastPage = Math.max(0, Math.ceil(vehicles.length / PAGE_SIZE) - 1);
@@ -53,7 +59,19 @@ function VehicleList({ vehicles }: { vehicles: Vehicle[] }) {
                   .slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE)
                   .map((bus) => (
                     <tr key={bus.id}>
-                      <td>{bus.id}</td>
+                      <td>
+                        {onSelect ? (
+                          <button
+                            className="vehicle-select"
+                            aria-label={`Detalhes do ônibus ${bus.id}`}
+                            onClick={() => onSelect(bus.id)}
+                          >
+                            {bus.id}
+                          </button>
+                        ) : (
+                          bus.id
+                        )}
+                      </td>
                       <td>{bus.line}</td>
                       <td>{bus.destination}</td>
                       <td>
