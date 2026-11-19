@@ -23,9 +23,11 @@ vi.mock("./components/BusMap", () => ({
     visual,
     routeFocus,
     onRoutePick,
+    fitRequest,
   }: {
     onSelect: (id: string) => void;
     routeFocus: string | null;
+    fitRequest: number;
     onRoutePick: (labels: string[]) => void;
     visual: { mode: string; busDiameter: number; groupScale: number };
     vehicles: Vehicle[];
@@ -44,6 +46,7 @@ vi.mock("./components/BusMap", () => ({
         <button onClick={() => onSelect(vehicles[0].id)}>
           Selecionar ônibus no mapa
         </button>
+        <output data-testid="fit-request">{fitRequest}</output>
         <div data-testid="route-focus">{routeFocus ?? "all"}</div>
         <button onClick={() => onRoutePick(["5015-10"])}>
           Clicar percurso único
@@ -590,4 +593,53 @@ it("does not infer routes for an area with no catalog mapping", async () => {
   fireEvent.click(screen.getByLabelText(/Área não identificada/));
   expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
   expect(screen.getByText(/Nenhum percurso associado/)).toBeInTheDocument();
+});
+
+it.each(["empty", "expired", "offline"])(
+  "fits available area routes when positions are %s",
+  async (state) => {
+    const fetch = respondWithRoutes();
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation(async (...args) => {
+      if (String(args[0]).includes("/network/")) return original(...args);
+      if (state === "offline") throw new Error("positions unavailable");
+      const payload = snapshot(state === "expired" ? 61 : 0);
+      return new Response(
+        JSON.stringify(
+          state === "empty" ? { ...payload, vehicles: [], lines: [] } : payload,
+        ),
+      );
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByLabelText(/2 · Norte/));
+    await waitFor(() =>
+      expect(screen.getByTestId("routes")).toHaveTextContent(/^1,11$/),
+    );
+    expect(screen.getByTestId("map")).toBeEmptyDOMElement();
+    const fit = screen.getByRole("button", { name: "Enquadrar seleção" });
+    expect(fit).toBeEnabled();
+    expect(screen.getByTestId("fit-request")).toHaveTextContent("0");
+    fireEvent.click(fit);
+    expect(screen.getByTestId("fit-request")).toHaveTextContent("1");
+  },
+);
+it("keeps fitting disabled without positions or drawable routes", async () => {
+  const fetch = respondWithRoutes();
+  const original = fetch.getMockImplementation()!;
+  fetch.mockImplementation(async (...args) => {
+    const url = String(args[0]);
+    if (url.includes("/network/routes/"))
+      return new Response("{}", { status: 404 });
+    if (url.includes("/network/catalog")) return original(...args);
+    return new Response(
+      JSON.stringify({ ...snapshot(), vehicles: [], lines: [] }),
+    );
+  });
+  render(<App />);
+  fireEvent.click(await screen.findByLabelText(/2 · Norte/));
+  await screen.findByText(/0 linhas exibidas/);
+  expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+  expect(
+    screen.getByRole("button", { name: "Enquadrar seleção" }),
+  ).toBeDisabled();
 });

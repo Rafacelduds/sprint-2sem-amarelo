@@ -577,7 +577,7 @@ export default function App() {
           <div className="selection-actions">
             <button
               onClick={() => setFitRequest((v) => v + 1)}
-              disabled={!vehicles.length}
+              disabled={!vehicles.length && !availableLabels.size}
             >
               Enquadrar seleção
             </button>
