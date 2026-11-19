@@ -57,6 +57,19 @@ jobs:
       - run: uv run ruff check .
       - run: uv run pyright
 
+  map-windows:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+          enable-cache: true
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: uv run pytest apps/api/tests/test_network_gtfs.py apps/api/tests/test_network.py apps/api/tests/test_live.py
+
   frontend:
     runs-on: ubuntu-latest
     steps:

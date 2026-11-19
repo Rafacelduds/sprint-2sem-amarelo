@@ -232,9 +232,11 @@ def load_feed(reference: FeedReference) -> Feed:
             temporary.unlink(missing_ok=True)
     else:
         with path.open("rb") as stream:
-            if hashlib.file_digest(stream, "sha256").hexdigest() != reference.version:
-                path.unlink()
-                raise ValueError("cache_hash_mismatch")
+            valid = hashlib.file_digest(stream, "sha256").hexdigest() == reference.version
+        if not valid:
+            # Windows requires the reader to be closed before removing the corrupt cache.
+            path.unlink()
+            raise ValueError("cache_hash_mismatch")
     return prepare_feed(path, directory / "shapes-v1.sqlite")
 
 

@@ -119,6 +119,12 @@ def test_archive_copy_hash_and_cache_are_checked(tmp_path: Path, monkeypatch: py
     with pytest.raises(ValueError, match="cache_hash_mismatch"):
         load_feed(ref)
     assert not cached.exists()
+    # The next attempt recovers from the immutable source without manual intervention.
+    client.get_object.return_value = {"Body": StreamingBody(io.BytesIO(data), len(data))}
+    recovered = load_feed(ref)
+    assert recovered.match("701A-10", "Metro Vila Madalena")
+    assert cached.read_bytes() == data
+    assert client.get_object.call_count == 2
     assert (tmp_path / "source.zip").read_bytes() == data
 
 
