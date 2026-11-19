@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from api.config import get_settings
 from api.live import router as live_router
 from api.network import router as network_router
+from api.reliability.routes import router as reliability_router
 
 
 class HealthResponse(BaseModel):
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
 
     application.include_router(live_router)
     application.include_router(network_router)
+    application.include_router(reliability_router)
     return application
 
 

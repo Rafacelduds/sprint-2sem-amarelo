@@ -27,14 +27,29 @@ async def single_collector(engine: AsyncEngine) -> AsyncGenerator[AsyncConnectio
 
 
 class PostgresStore:
-    def __init__(self, sessions: async_sessionmaker[AsyncSession], gtfs_source_id: str = "sptrans"):
+    def __init__(
+        self,
+        sessions: async_sessionmaker[AsyncSession],
+        gtfs_source_id: str = "sptrans",
+        interval_seconds: int = 30,
+    ):
+        if not 15 <= interval_seconds <= 60:
+            raise ValueError("intervalo deve estar entre 15 e 60 segundos")
         self.sessions = sessions
         self.gtfs_source_id = gtfs_source_id
+        self.interval_seconds = interval_seconds
 
     async def start(self, scheduled_at: datetime) -> UUID:
         cycle_id = uuid4()
         async with self.sessions.begin() as session:
-            session.add(CollectionCycle(id=cycle_id, scheduled_at=scheduled_at, status="running"))
+            session.add(
+                CollectionCycle(
+                    id=cycle_id,
+                    scheduled_at=scheduled_at,
+                    status="running",
+                    interval_seconds=self.interval_seconds,
+                )
+            )
         return cycle_id
 
     async def save(self, cycle_id: UUID, snapshot: Snapshot) -> None:
