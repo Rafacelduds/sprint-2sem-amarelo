@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses } from './types.gen';
+import type { CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -56,6 +56,16 @@ export const catalogNetworkCatalogGet = <ThrowOnError extends boolean = false>(o
 export const routeNetworkRoutesLineIdGet = <ThrowOnError extends boolean = false>(options: Options<RouteNetworkRoutesLineIdGetData, ThrowOnError>) => {
     return (options.client ?? client).get<RouteNetworkRoutesLineIdGetResponses, RouteNetworkRoutesLineIdGetErrors, ThrowOnError>({
         url: '/network/routes/{line_id}',
+        ...options
+    });
+};
+
+/**
+ * Daily Reliability
+ */
+export const dailyReliabilityReportsReliabilityDayGet = <ThrowOnError extends boolean = false>(options: Options<DailyReliabilityReportsReliabilityDayGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<DailyReliabilityReportsReliabilityDayGetResponses, DailyReliabilityReportsReliabilityDayGetErrors, ThrowOnError>({
+        url: '/reports/reliability/{day}',
         ...options
     });
 };

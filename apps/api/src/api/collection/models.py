@@ -12,7 +12,8 @@ from api.db.base import Base
 class CollectionCycle(Base):
     __tablename__ = "collection_cycles"
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    interval_seconds: Mapped[int | None]
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str]
     error_code: Mapped[str | None]
