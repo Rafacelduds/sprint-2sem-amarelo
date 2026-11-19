@@ -30,6 +30,18 @@ opção semanal continua pendente do PO. **Status: proposta implementada para re
 aprovação de outro dev e validação da política temporal pendentes.** O acervo de
 respostas Olho Vivo e seu contrato com US12 não são alterados. Detalhes em [gtfs.md](gtfs.md).
 
+## D005 — Programação oficial e divergências de totais (proposta)
+
+Em 19/11/2026, a implementação da [US04](https://trello.com/c/9bob1kHl) prioriza
+os horários publicados na API de itinerários SPTrans e usa GTFS somente quando
+a programação oficial não está disponível. Na primeira amostra de 30 linhas,
+o campo `totalPartidas` divergiu das listas em oito respostas. Pedro orientou
+manter os horários oficiais e sinalizar a divergência; os dois valores são
+preservados no relatório, sem substituir o critério acadêmico de concordância.
+Esta é uma orientação de implementação, não aceite do PO. Frequência de captura,
+vigência histórica e corte operacional continuam pendentes. Contrato em
+[programacao.md](programacao.md). **Status: proposta para revisão independente.**
+
 ## Como registrar a próxima
 
 Use ID sequencial e título. Em poucos parágrafos, informe **data e status** (proposta, aprovada, rejeitada ou substituída), **problema**, **escolha e motivo**, **consequências** e **fonte/aprovação** (pessoa, US, PR ou documento). Mencione alternativas apenas quando explicarem uma escolha relevante. Se substituir uma decisão, preserve o registro anterior e vincule a nova.

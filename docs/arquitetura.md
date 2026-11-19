@@ -42,6 +42,11 @@ O mapa usa Supercluster sobre as posições já filtradas. Grupos neutros repres
 
 ## Evolução
 
+A US04 acrescenta o processo `python -m api.schedules`, que preserva programação
+oficial em JSON/S3 e gera partidas em Parquet com relatório de proveniência.
+Pode consumir o catálogo PostgreSQL/S3 da US02 como alternativa GTFS, sem repetir
+a captura do ZIP na origem. Contrato e limites em [programacao.md](programacao.md).
+
 A US02 acrescenta `python -m api.gtfs`: o ZIP original vai para uma chave S3 por
 SHA-256; versões e capturas ficam no PostgreSQL. A coleta de posições grava a
 referência GTFS ou o motivo de ausência na mesma transação da posição. A integração

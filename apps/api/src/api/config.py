@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     olho_vivo_base_url: str = "https://api.olhovivo.sptrans.com.br/v2.1"
 
     network_catalog_path: str | None = None
+    schedule_source_url: str = "https://itinerariosapi.sptrans.com.br"
     gtfs_source_id: str = "sptrans"
     network_cache_dir: Path = Path(__file__).resolve().parents[4] / "data" / "network"
 
