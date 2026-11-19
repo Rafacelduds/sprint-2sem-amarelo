@@ -15,6 +15,8 @@ class Settings(BaseSettings):
 
     network_catalog_path: str | None = None
     schedule_source_url: str = "https://itinerariosapi.sptrans.com.br"
+    gtfs_source_id: str = "sptrans"
+    network_cache_dir: Path = Path(__file__).resolve().parents[4] / "data" / "network"
 
     app_name: str = "Sprint Amarelo API"
     database_url: str = "postgresql+asyncpg://amarelo:amarelo@localhost:5432/amarelo"

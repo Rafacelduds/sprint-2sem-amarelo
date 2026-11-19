@@ -59,13 +59,21 @@ export type CatalogLine = {
      */
     area_source?: string | null;
     /**
-     * Match Source
-     */
-    match_source: string;
-    /**
      * Color
      */
     color?: string | null;
+    /**
+     * Color Source
+     */
+    color_source?: string | null;
+    /**
+     * Match Status
+     */
+    match_status?: 'matched' | 'unmatched' | 'ambiguous';
+    /**
+     * Match Source
+     */
+    match_source: string;
 };
 
 /**
@@ -184,6 +192,18 @@ export type NetworkLine = {
      * Area Source
      */
     area_source?: string | null;
+    /**
+     * Color
+     */
+    color?: string | null;
+    /**
+     * Color Source
+     */
+    color_source?: string | null;
+    /**
+     * Match Status
+     */
+    match_status?: 'matched' | 'unmatched' | 'ambiguous';
     /**
      * Match Source
      */

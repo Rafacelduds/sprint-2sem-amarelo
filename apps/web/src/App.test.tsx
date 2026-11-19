@@ -278,7 +278,7 @@ describe("Rede pública", () => {
     render(<App />);
     await screen.findByText("Atualização ativa");
     expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
-    expect(screen.getByText(/aguardando a US02/)).toBeInTheDocument();
+    expect(screen.getByText(/Cores e percursos planejados indisponíveis/)).toBeInTheDocument();
   });
   it("does not display expired positions as live", async () => {
     respond(61);

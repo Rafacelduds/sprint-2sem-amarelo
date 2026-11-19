@@ -1,5 +1,7 @@
-"""Read-only adapter for a versioned US02 export; never downloads GTFS."""
+"""Versioned read-only map adapter for US02 archives or explicit test exports."""
 
+import asyncio
+import sqlite3
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -9,17 +11,19 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from api.config import get_settings
+from api.live import live_positions
+from api.network_gtfs import feed_provider
 
-# SPTrans padrão cromático DV.01.001.1-2-R0. Screen approximations, not paint specs.
+# SPTrans operating areas; screen RGB from the official routes.txt, inspected 2026-11-19.
 AREA_COLORS = {
-    1: ("Noroeste", "#638D36"),
-    2: ("Norte", "#22599B"),
-    3: ("Nordeste", "#E4B621"),
-    4: ("Leste", "#D5453D"),
-    5: ("Sudeste", "#28704C"),
-    6: ("Sul", "#42A6CC"),
-    7: ("Sudoeste", "#8C3C59"),
-    8: ("Oeste", "#DE7D30"),
+    1: ("Noroeste", "#509E2F"),
+    2: ("Norte", "#002F6C"),
+    3: ("Nordeste", "#FFD100"),
+    4: ("Leste", "#DA291C"),
+    5: ("Sudeste", "#006341"),
+    6: ("Sul", "#0082BA"),
+    7: ("Sudoeste", "#782F40"),
+    8: ("Oeste", "#FF671F"),
     9: ("Central", "#969CA0"),
 }
 
@@ -33,6 +37,9 @@ class NetworkLine(BaseModel):
     direction_id: str
     area_id: int | None = Field(default=None, ge=1, le=9)
     area_source: str | None = None
+    color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    color_source: str | None = None
+    match_status: Literal["matched", "unmatched", "ambiguous"] = "matched"
     # Explicit matching evidence. sl and direction_id must not be assumed equivalent.
     match_source: str = Field(min_length=1)
 
@@ -83,7 +90,7 @@ class NetworkExport(BaseModel):
 
 
 class CatalogLine(NetworkLine):
-    color: str | None = None
+    pass
 
 
 class Area(BaseModel):
@@ -127,13 +134,65 @@ def get_network() -> NetworkExport | None:
         return None
 
 
+async def current_network() -> NetworkExport | None:
+    if get_settings().network_catalog_path:
+        return await asyncio.to_thread(get_network)
+    current = await feed_provider.get()
+    if not current:
+        return None
+    reference, feed = current
+    try:
+        snapshot = await live_positions.get()
+    except HTTPException:
+        return NetworkExport(
+            version=reference.version,
+            captured_at=reference.captured_at,
+            source=reference.source,
+            features=[],
+        )
+    features: list[RouteFeature] = []
+    for line in snapshot.lines:
+        match = feed.match(line.label, line.destination)
+        if not match:
+            continue
+        area = next(
+            (
+                id
+                for id, (_, color) in AREA_COLORS.items()
+                if id <= 8 and color == match.route.color
+            ),
+            None,
+        )
+        properties = NetworkLine(
+            line_id=line.id,
+            label=line.label,
+            direction=line.direction,
+            destination=line.destination,
+            route_id=match.route.id,
+            direction_id=match.direction,
+            area_id=area,
+            area_source="GTFS routes.txt/route_color + paleta oficial SPTrans" if area else None,
+            color=match.route.color,
+            color_source="GTFS routes.txt/route_color",
+            match_source="route_short_name exato + trip_headsign normalizado único",
+            match_status=match.status,
+        )
+        features.append(RouteFeature(properties=properties, geometry=RouteGeometry(coordinates=[])))
+    return NetworkExport(
+        version=reference.version,
+        captured_at=reference.captured_at,
+        source=reference.source,
+        features=features,
+    )
+
+
 router = APIRouter(prefix="/network", tags=["rede e GTFS"])
 
 
 @router.get("/catalog", response_model=NetworkCatalog)
-def catalog(response: Response) -> NetworkCatalog:
+async def catalog(response: Response) -> NetworkCatalog:
     response.headers["Cache-Control"] = "no-cache"
-    network = get_network()
+    network = await current_network()
     return NetworkCatalog(
         status="ready" if network else "unavailable",
         version=network.version if network else None,
@@ -143,8 +202,11 @@ def catalog(response: Response) -> NetworkCatalog:
         areas=[Area(id=key, name=name, color=color) for key, (name, color) in AREA_COLORS.items()],
         lines=[
             CatalogLine(
-                **f.properties.model_dump(),
-                color=(AREA_COLORS[f.properties.area_id][1] if f.properties.area_id else None),
+                **f.properties.model_dump(exclude={"color"}),
+                color=(
+                    f.properties.color
+                    or (AREA_COLORS[f.properties.area_id][1] if f.properties.area_id else None)
+                ),
             )
             for f in network.features
         ]
@@ -158,11 +220,23 @@ def catalog(response: Response) -> NetworkCatalog:
     response_model=RouteCollection,
     responses={404: {"description": "Correspondência ou traçado indisponível"}},
 )
-def route(line_id: int, response: Response, version: str | None = None) -> RouteCollection:
-    network = get_network()
+async def route(line_id: int, response: Response, version: str | None = None) -> RouteCollection:
+    network = await current_network()
     if not network or (version is not None and version != network.version):
         raise HTTPException(404, "Versão GTFS indisponível. Atualize o catálogo.")
     features = [f for f in network.features if f.properties.line_id == line_id]
+    if features and not get_settings().network_catalog_path:
+        current = await feed_provider.get()
+        if current and current[0].version == network.version:
+            feed = current[1]
+            for feature in features:
+                match = feed.match(feature.properties.label, feature.properties.destination)
+                if match and match.status == "matched":
+                    try:
+                        coordinates = await asyncio.to_thread(feed.geometry, match.shapes)
+                    except (OSError, sqlite3.Error):
+                        coordinates = []
+                    feature.geometry = RouteGeometry(coordinates=coordinates)
     if not features or not any(f.geometry.coordinates for f in features):
         raise HTTPException(404, "Percurso ainda não disponível para este sentido.")
     response.headers["Cache-Control"] = "no-cache"
