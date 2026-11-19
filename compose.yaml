@@ -158,6 +158,36 @@ services:
       s3:
         condition: service_healthy
 
+  reliability:
+    profiles: [relatorios]
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: [".venv/bin/python", "-m", "api.reliability", "--watch"]
+    healthcheck:
+      disable: true
+    configs:
+      - source: restore-map
+        target: /run/configs/storage-restore-map.json
+    environment:
+      S3_RESTORE_MAP: /run/configs/storage-restore-map.json
+      PYTHONPATH: /workspace/apps/api/src
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
+      S3_BUCKET: ${S3_BUCKET:-raw-data}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      GTFS_SOURCE_ID: ${GTFS_SOURCE_ID:-sptrans}
+      COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-30}
+      APP_CODE_VERSION: ${APP_CODE_VERSION:-}
+    depends_on:
+      api:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+
   raw-publisher:
     profiles: [publicacao]
     restart: unless-stopped

@@ -43,6 +43,11 @@ O mapa usa Supercluster sobre as posições já filtradas. Grupos neutros repres
 
 ## Evolução
 
+A US13 acrescenta `python -m api.reliability`, separado da API, para consolidar
+metadados de coleta/GTFS e manifestos de programação em relatórios diários no
+PostgreSQL. A rota pública `/reports/reliability/{day}` só lê o derivado publicado.
+Regras, configuração e limites em [confiabilidade](confiabilidade.md).
+
 A US04 acrescenta o processo `python -m api.schedules`, que preserva programação
 oficial em JSON/S3 e gera partidas em Parquet com relatório de proveniência.
 Pode consumir o catálogo PostgreSQL/S3 da US02 como alternativa GTFS, sem repetir

@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses } from './types.gen';
+import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -102,6 +102,16 @@ export const detailExportsRawDayGet = <ThrowOnError extends boolean = false>(opt
 export const downloadExportsRawDayDownloadGet = <ThrowOnError extends boolean = false>(options: Options<DownloadExportsRawDayDownloadGetData, ThrowOnError>) => {
     return (options.client ?? client).get<DownloadExportsRawDayDownloadGetResponses, DownloadExportsRawDayDownloadGetErrors, ThrowOnError>({
         url: '/exports/raw/{day}/download',
+        ...options
+    });
+};
+
+/**
+ * Daily Reliability
+ */
+export const dailyReliabilityReportsReliabilityDayGet = <ThrowOnError extends boolean = false>(options: Options<DailyReliabilityReportsReliabilityDayGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<DailyReliabilityReportsReliabilityDayGetResponses, DailyReliabilityReportsReliabilityDayGetErrors, ThrowOnError>({
+        url: '/reports/reliability/{day}',
         ...options
     });
 };

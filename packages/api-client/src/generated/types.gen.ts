@@ -131,6 +131,54 @@ export type ExportInfo = {
 };
 
 /**
+ * Gap
+ */
+export type Gap = {
+    /**
+     * Start
+     */
+    start: string;
+    /**
+     * End
+     */
+    end: string;
+    /**
+     * Cause
+     */
+    cause: 'origin_failure' | 'storage_failure' | 'interrupted' | 'unfinished_cycle' | 'unknown_cycle_status' | 'no_cycle_record';
+    /**
+     * Evidence
+     */
+    evidence: 'recorded_cycle' | 'inferred_absence';
+    /**
+     * Possible Maintenance
+     */
+    possible_maintenance?: boolean;
+    /**
+     * Maintenance Confirmed
+     */
+    maintenance_confirmed?: false;
+};
+
+/**
+ * GtfsPeriod
+ */
+export type GtfsPeriod = {
+    /**
+     * Start
+     */
+    start: string;
+    /**
+     * End
+     */
+    end: string;
+    /**
+     * Sha256
+     */
+    sha256: string | null;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -265,6 +313,92 @@ export type NetworkLine = {
 };
 
 /**
+ * ReliabilityReport
+ */
+export type ReliabilityReport = {
+    /**
+     * Day
+     */
+    day: string;
+    /**
+     * Timezone
+     */
+    timezone?: 'America/Sao_Paulo';
+    /**
+     * Rule Version
+     */
+    rule_version?: 'us13-v1';
+    /**
+     * Code Version
+     */
+    code_version?: string;
+    /**
+     * Generated At
+     */
+    generated_at: string;
+    /**
+     * Period Start
+     */
+    period_start: string;
+    /**
+     * Period End
+     */
+    period_end: string;
+    /**
+     * Provisional
+     */
+    provisional: boolean;
+    /**
+     * Fallback Interval Seconds
+     */
+    fallback_interval_seconds: number;
+    /**
+     * Scheduling Tolerance Seconds
+     */
+    scheduling_tolerance_seconds?: number;
+    /**
+     * Cycles
+     */
+    cycles: number;
+    /**
+     * Legacy Interval Cycles
+     */
+    legacy_interval_cycles: number;
+    /**
+     * Gaps
+     */
+    gaps: Array<Gap>;
+    /**
+     * Gap Seconds
+     */
+    gap_seconds: number;
+    /**
+     * Gtfs Source Id
+     */
+    gtfs_source_id: string;
+    /**
+     * Gtfs Reference Periods
+     */
+    gtfs_reference_periods: Array<GtfsPeriod>;
+    /**
+     * Gtfs Used
+     */
+    gtfs_used: Array<UsedVersion>;
+    /**
+     * Schedule References
+     */
+    schedule_references: Array<ScheduleReference>;
+    /**
+     * Schedules Status
+     */
+    schedules_status: 'references_found' | 'no_manifest_for_day';
+    /**
+     * Limitations
+     */
+    limitations: Array<string>;
+};
+
+/**
  * RouteCollection
  */
 export type RouteCollection = {
@@ -320,6 +454,40 @@ export type RouteGeometry = {
 };
 
 /**
+ * ScheduleReference
+ */
+export type ScheduleReference = {
+    /**
+     * Run Id
+     */
+    run_id: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Finished At
+     */
+    finished_at: string;
+    /**
+     * Manifest Sha256
+     */
+    manifest_sha256: string;
+    /**
+     * Source Hashes
+     */
+    source_hashes: Array<string>;
+    /**
+     * Complete
+     */
+    complete: boolean;
+    /**
+     * Has Discrepancies
+     */
+    has_discrepancies: boolean;
+};
+
+/**
  * Snapshot
  */
 export type Snapshot = {
@@ -351,6 +519,24 @@ export type Snapshot = {
      * Discarded
      */
     discarded?: number;
+};
+
+/**
+ * UsedVersion
+ */
+export type UsedVersion = {
+    /**
+     * Sha256
+     */
+    sha256: string | null;
+    /**
+     * Link Status
+     */
+    link_status: string;
+    /**
+     * Observations
+     */
+    observations: number;
 };
 
 /**
@@ -649,3 +835,41 @@ export type DownloadExportsRawDayDownloadGetResponses = {
      */
     200: unknown;
 };
+
+export type DailyReliabilityReportsReliabilityDayGetData = {
+    body?: never;
+    path: {
+        /**
+         * Day
+         */
+        day: string;
+    };
+    query?: never;
+    url: '/reports/reliability/{day}';
+};
+
+export type DailyReliabilityReportsReliabilityDayGetErrors = {
+    /**
+     * Dia ainda não publicado
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Banco temporariamente indisponível
+     */
+    503: unknown;
+};
+
+export type DailyReliabilityReportsReliabilityDayGetError = DailyReliabilityReportsReliabilityDayGetErrors[keyof DailyReliabilityReportsReliabilityDayGetErrors];
+
+export type DailyReliabilityReportsReliabilityDayGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReliabilityReport;
+};
+
+export type DailyReliabilityReportsReliabilityDayGetResponse = DailyReliabilityReportsReliabilityDayGetResponses[keyof DailyReliabilityReportsReliabilityDayGetResponses];
