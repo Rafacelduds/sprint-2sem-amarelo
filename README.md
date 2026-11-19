@@ -142,6 +142,9 @@ proveniência está em
 
 ## Coleta de dados
 
+Programação oficial por linha e dia, alternativa GTFS e conferência de totais:
+[execução e contrato da US04](docs/programacao.md).
+
 O coletor Olho Vivo roda em processo separado, com intervalo configurável,
 posições em operação e garagens e persistência no PostgreSQL. Configure
 `CHAVE_API_OLHO_VIVO` (ou `OLHOVIVO_TOKEN`) em `apps/api/.env` e consulte

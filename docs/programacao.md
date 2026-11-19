@@ -1,0 +1,127 @@
+# Partidas programadas por linha e dia — US04
+
+## Especificação e alcance
+
+História: [US04 no Trello](https://trello.com/c/9bob1kHl). O processo
+`python -m api.schedules` captura a programação oficial da SPTrans e produz
+partidas por linha e data de referência em Parquet, separado da API HTTP.
+Quando a fonte oficial não fornece uma linha/dia, pode usar uma referência
+GTFS da US02. Uma linha usa uma fonte inteira, sem misturar sentidos de fontes
+diferentes. Não altera o contrato HTTP nem o cliente TypeScript.
+
+O aceite exige prioridade da fonte oficial, alternativa GTFS e conferência dos
+totais em 30 linhas. Captura diária ou semanal, política de vigência histórica
+e corte do dia operacional continuam sujeitos ao PO; esta implementação não
+declara esses pontos aprovados e não instala um agendamento.
+
+## Fonte oficial e execução
+
+A [página oficial de itinerários](https://www.sptrans.com.br/itinerarios/linha/)
+usa `https://itinerariosapi.sptrans.com.br`. Em 19/11/2026, foram conferidos
+`POST /RetornarLinhasTeste` (catálogo com `codigo` e `CdPjOID`) e
+`POST /BuscarDetalheLinhaTeste` com `{"codPlanejamento": <CdPjOID>}`.
+Os blocos `partidasIda`/`partidasVolta` contêm `tipoDia`, `totalPartidas` e
+`horariosProgramados`. O coletor do cliente, no
+[commit de referência](https://github.com/gabinete-falzoni/monitoramento-onibus/blob/c969bf1c9d0d271772cd61e9652af2eed59aa339/coleta_horarios_programados/coletar_linhas_sptrans.R),
+serviu para localizar o contrato; a implementação do grupo é Python e foi
+conferida com a própria fonte.
+
+Configure o S3 conforme o README e aplique as migrações da US02 se consumir seu
+catálogo. O bucket precisa existir e ter versionamento habilitado; no ambiente
+local, `uv run --package amarelo-api python -m api.storage init` prepara isso.
+`SCHEDULE_SOURCE_URL` em `apps/api/.env` permite uma origem de teste. Não use
+credenciais reais em simulações.
+
+```bash
+# Amostra determinística das primeiras 30 linhas, por código do catálogo.
+uv run --package amarelo-api python -m api.schedules --sample 30 --day-type U
+
+# Recorte explícito, com alternativa retirada do catálogo PostgreSQL/S3 da US02.
+uv run --package amarelo-api python -m api.schedules --lines 701A-10,7267-10 --day-type U --gtfs-source-id sptrans
+
+# Alternativa usando um ZIP previamente capturado, sem modificar o original.
+uv run --package amarelo-api python -m api.schedules --lines 701A-10 --day-type U --gtfs-file referencia.zip
+```
+
+`--day-type U|S|D` é obrigatório: o operador confirma a regra aplicável,
+inclusive em feriados. Não há inferência automática de feriado ou conversão
+automática entre a regra oficial e o calendário GTFS. A data da captura em
+`America/Sao_Paulo` é a referência da saída oficial; não se permite retroagir
+uma captura atual para representar maio. Captura não comprova vigência histórica.
+
+`--output` aceita um diretório local; cada execução usa UUID próprio.
+`--code-version` registra o commit que gerou a saída; o padrão `working-tree`
+explicita a ausência dessa identificação. Não apresentar uma execução feita
+sobre alterações locais como reprodução de um commit publicado.
+
+As consultas são sequenciais, com pausa de 0,5 s por linha, timeout de 30 s
+e até três tentativas para transporte, 429 ou 5xx, com espera crescente.
+Respostas têm limite de 8 MiB. Falha ou JSON inválido não vira zero; o relatório
+registra a indisponibilidade e a alternativa utilizada. Erro no armazenamento
+interrompe a execução. Cada nova execução tem seu próprio manifesto e reutiliza
+objetos idênticos sem sobrescrevê-los; não existe retomada por checkpoint.
+Saída incompleta retorna código 1; divergência entre o total declarado e os
+horários listados retorna código 2, mantendo os horários oficiais e o aviso.
+Essa escolha de tratamento foi informada por Pedro em 19/11/2026 e não equivale
+ao aceite do PO. Falhas fatais anteriores ao manifesto deixam
+os brutos já arquivados e a pasta local para inspeção, sem anunciar sucesso.
+
+## Contrato dos dados
+
+- Brutos JSON originais: `raw/schedules/sptrans/<sha256>.json`.
+- ZIP usado como alternativa: `raw/schedules/gtfs/<sha256>.zip`.
+- Derivado: `derived/schedules/us04-v1/<sha256>.parquet`.
+- Relatório e referências dos objetos: `manifests/schedules/<run_id>.json`.
+
+As escritas reutilizam o contrato imutável da US12 (`IfNoneMatch`, verificação
+de hash e retomada somente de conteúdo idêntico). O relatório inclui captura,
+data/tipo de dia, versão da regra, referência de código informada, hashes de
+entrada/saída, totais declarados por sentido e totais escritos. Divergências
+aparecem em `declared_counts_match`, `warning` e `has_discrepancies`;
+`official_lines_concordant` separa os casos concordantes dos consultados.
+`acceptance_30_lines` permanece falso se houver divergência na amostra.
+O catálogo desta
+rotina é o manifesto S3; não há tabela nova no PostgreSQL.
+
+O Parquet contém `line`, `direction`, `direction_system`, `service_date`,
+`departure_seconds`, `kind`, `source_sha256`, `trip_id` e `source_order`.
+`direction_system` distingue sentidos da API de itinerários e do GTFS; nenhum
+deles é convertido implicitamente em sentido Olho Vivo. `source_order` preserva
+a sequência da fonte. Horários oficiais `00:xx` permanecem assim; não são
+transformados em `24:xx` por suposição. Portanto, não há timestamp operacional
+de partida homologado nesta versão.
+
+GTFS respeita `calendar.txt`, inclusões/exclusões de `calendar_dates.txt` e o
+menor `stop_sequence` por viagem. Viagens com `frequencies.txt` substituem o
+horário exemplar de `stop_times`; não o contam novamente. Cada faixa usa
+`start_time <= horário < end_time`, sem sobreposição. `exact_times=1` gera
+`gtfs_exact`; `0` ou ausente gera **possibilidades estimadas**, marcadas como
+`gtfs_frequency_estimate`. A grade começa em `start_time` por convenção desta
+regra, sem prometer partida real nesse instante. Sem frequência, o tipo é
+`gtfs_fixed`. Horas GTFS acima de 24 são preservadas em segundos.
+Referência: [especificação GTFS Schedule](https://gtfs.org/documentation/schedule/reference/),
+consultada em 19/11/2026.
+
+Uma linha ausente do GTFS é erro, nunca zero. Uma linha conhecida sem serviço
+ativo no calendário resulta em `gtfs_no_departures`, distinguível de
+`unavailable`. A cobertura declarada do ZIP precisa conter a data consultada.
+Com `--gtfs-source-id`, só se usa versão da US02 conhecida até a consulta,
+com hash conferido no S3; a captura anterior também não certifica vigência.
+
+## Verificação
+
+Os testes cobrem totais divergentes, horários inválidos, meia-noite, calendários,
+exceções, faixas sobrepostas, frequências exatas/estimadas, prioridade oficial,
+retentativas, indisponibilidade e falha de armazenamento. O teste integrado usa
+HTTP local real, S3 local e Parquet; as fixtures são inteiramente sintéticas.
+
+```bash
+uv run pytest apps/api/tests/test_schedules.py
+```
+
+Configure `TEST_S3_ENDPOINT_URL` para executar a integração S3; sem isso, ela é
+explicitamente omitida. A conferência real de 30 linhas deve registrar seu
+relatório e comparar os campos `totalPartidas` da fonte com a contagem do
+Parquet, sem atribuir à contagem uma validação de viagens observadas ou de SLA.
+Resultado da primeira validação real e reprodução da auditoria:
+[evidências de 19/11/2026](evidencias/2026-11-19-us04.md).
