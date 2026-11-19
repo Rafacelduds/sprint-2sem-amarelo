@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     olho_vivo_base_url: str = "https://api.olhovivo.sptrans.com.br/v2.1"
 
     network_catalog_path: str | None = None
+    gtfs_source_id: str = "sptrans"
+    network_cache_dir: Path = Path(__file__).resolve().parents[4] / "data" / "network"
 
     app_name: str = "Sprint Amarelo API"
     database_url: str = "postgresql+asyncpg://amarelo:amarelo@localhost:5432/amarelo"

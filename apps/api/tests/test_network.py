@@ -45,7 +45,7 @@ async def test_catalog_geometry_and_version_swap(tmp_path: Path, monkeypatch: py
     ) as c:
         catalog = (await c.get("/network/catalog")).json()
         assert catalog["status"] == "ready"
-        assert catalog["lines"][0]["color"] == "#22599B"
+        assert catalog["lines"][0]["color"] == "#002F6C"
         assert len(catalog["areas"]) == 9
         route = await c.get("/network/routes/1", params={"version": "a" * 64})
         assert route.status_code == 200

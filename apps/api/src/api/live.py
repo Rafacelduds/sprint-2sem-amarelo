@@ -54,6 +54,7 @@ class RawLine(BaseModel):
     c: str
     sl: int
     lt0: str = ""
+    lt1: str = ""
     vs: list[object]
 
 
@@ -72,7 +73,10 @@ def normalize(payload: object, collected_at: datetime) -> Snapshot:
         except ValidationError:
             discarded += 1
             continue
-        lines[line.cl] = Line(id=line.cl, label=line.c, direction=line.sl, destination=line.lt0)
+        # Posicao repeats both directional headsigns (lt0/tp and lt1/ts) for each sl.
+        # Choose the direction's headsign before matching GTFS; never map sl to direction_id.
+        destination = line.lt0 if line.sl == 1 else line.lt1 if line.sl == 2 else ""
+        lines[line.cl] = Line(id=line.cl, label=line.c, direction=line.sl, destination=destination)
         for raw in line.vs:
             try:
                 bus = RawVehicle.model_validate(raw)
@@ -88,7 +92,7 @@ def normalize(payload: object, collected_at: datetime) -> Snapshot:
                 line_id=line.cl,
                 line=line.c,
                 direction=line.sl,
-                destination=line.lt0,
+                destination=destination,
                 latitude=bus.py,
                 longitude=bus.px,
                 gps_at=bus.ta,

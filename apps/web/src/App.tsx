@@ -307,8 +307,7 @@ export default function App() {
           </details>
           {catalog?.status !== "ready" && (
             <p className="catalog-note">
-              Associação de áreas e percursos aguardando a US02. Posições
-              disponíveis em cinza.
+              Cores e percursos planejados indisponíveis no momento. As posições continuam disponíveis.
             </p>
           )}
           {catalog?.synthetic && (
@@ -462,7 +461,7 @@ export default function App() {
           {!!selectedLabels.length && (
             <p className="route-note">
               {!catalog?.version
-                ? "Percurso planejado indisponível: aguardando catálogo GTFS."
+                ? "Percurso planejado indisponível: nenhuma referência GTFS carregada."
                 : !selectedIds.length
                   ? "Nenhum sentido selecionado nas áreas filtradas."
                   : routesLoading
