@@ -80,7 +80,7 @@ async def test_upgrade_from_each_published_branch_preserves_positions(
         await alembic(target_url, "check")
         async with engine.connect() as connection:
             assert await connection.scalar(text("SELECT version_num FROM alembic_version")) == (
-                "20261119_0006"
+                "20261119_0008"
             )
             row = (
                 await connection.execute(
