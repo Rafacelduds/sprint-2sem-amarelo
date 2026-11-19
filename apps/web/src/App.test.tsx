@@ -328,33 +328,28 @@ describe("Visualização e detalhes", () => {
     const first = render(<App />);
     await screen.findByRole("button", { name: /5015-10/ });
     fireEvent.click(screen.getByRole("button", { name: /5015-10/ }));
-    fireEvent.click(screen.getByText("Visualização", { exact: true }));
-    fireEvent.change(screen.getByLabelText("Modo de visualização"), {
-      target: { value: "mixed" },
-    });
+    fireEvent.click(screen.getByText("Mais opções", { exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Misto" }));
     fireEvent.change(
       screen.getByRole("slider", { name: /Tamanho dos ônibus/ }),
       { target: { value: "18" } },
     );
     fireEvent.change(
-      screen.getByRole("slider", { name: /Tamanho dos grupos/ }),
+      screen.getByRole("slider", { name: /Tamanho geral dos grupos/ }),
       { target: { value: "150" } },
     );
     expect(screen.getByTestId("visual-mode")).toHaveTextContent("mixed:18:1.5");
     expect(screen.getByTestId("map")).toHaveTextContent("100,110");
-    fireEvent.change(screen.getByLabelText("Modo de visualização"), {
-      target: { value: "density" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Calor" }));
     expect(
-      screen.getByRole("slider", { name: /Tamanho dos grupos/ }),
-    ).toBeDisabled();
+      screen.queryByRole("slider", { name: /Tamanho geral dos grupos/ }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText(/Inclui GPS antigo/)).toBeInTheDocument();
     first.unmount();
     render(<App />);
     expect(screen.getByTestId("visual-mode")).toHaveTextContent(
       "density:18:1.5",
     );
-    fireEvent.click(screen.getByText("Visualização", { exact: true }));
     fireEvent.click(screen.getByRole("button", { name: "Restaurar padrões" }));
     expect(screen.getByTestId("visual-mode")).toHaveTextContent("clusters:9:1");
   });
@@ -388,11 +383,59 @@ describe("Visualização e detalhes", () => {
 });
 
 it("keeps the map usable when saving visual preferences is blocked", async () => {
-  vi.spyOn(window.localStorage, "setItem").mockImplementation(() => { throw new Error("quota"); });
-  respond(); render(<App />);
+  vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+    throw new Error("quota");
+  });
+  respond();
+  render(<App />);
   await screen.findByRole("button", { name: /5015-10/ });
-  fireEvent.click(screen.getByText("Visualização", { exact: true }));
-  fireEvent.change(screen.getByLabelText("Modo de visualização"), { target: { value: "density" } });
+  fireEvent.click(screen.getByRole("button", { name: "Calor" }));
   expect(screen.getByTestId("visual-mode")).toHaveTextContent("density:9:1");
   expect(screen.getByTestId("map")).toHaveTextContent("100");
+});
+
+it("shows a simple mode choice and only the relevant controls, persisting intensity and size style", async () => {
+  respond();
+  const first = render(<App />);
+  await screen.findByText("Atualização ativa");
+  const panel = within(screen.getByRole("region", { name: "Visualização" }));
+  expect(
+    panel.getByRole("button", { name: "Grupos", pressed: true }),
+  ).toBeVisible();
+  expect(panel.getByText("Mais opções").closest("details")).not.toHaveAttribute(
+    "open",
+  );
+  fireEvent.click(panel.getByRole("button", { name: "Calor" }));
+  expect(panel.getAllByRole("slider")).toHaveLength(1);
+  expect(
+    panel.queryByRole("button", { name: "Mesmo tamanho" }),
+  ).not.toBeInTheDocument();
+  fireEvent.change(
+    panel.getByRole("slider", { name: "Intensidade do calor" }),
+    { target: { value: "175" } },
+  );
+  fireEvent.click(panel.getByRole("button", { name: "Misto" }));
+  fireEvent.click(panel.getByRole("button", { name: "Mesmo tamanho" }));
+  expect(screen.getByTestId("map")).toHaveTextContent("100,110,200");
+  first.unmount();
+  render(<App />);
+  expect(
+    screen.getByRole("button", { name: "Misto", pressed: true }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Mesmo tamanho", pressed: true }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("slider", { name: "Intensidade do calor" }),
+  ).toHaveValue("175");
+  fireEvent.click(screen.getByRole("button", { name: "Restaurar padrões" }));
+  expect(
+    screen.getByRole("button", { name: "Grupos", pressed: true }),
+  ).toBeVisible();
+  expect(
+    screen.getByRole("button", { name: "Por quantidade", pressed: true }),
+  ).toBeVisible();
+  expect(
+    screen.getByText("Mais opções").closest("details"),
+  ).not.toHaveAttribute("open");
 });

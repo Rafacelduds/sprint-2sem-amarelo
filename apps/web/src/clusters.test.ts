@@ -77,12 +77,12 @@ describe("Agrupamentos espaciais", () => {
     expect(pages.map((p) => p.length)).toEqual([10, 10, 3]);
     expect(new Set(pages.flat().map((b) => b.id)).size).toBe(23);
   });
-  it("handles filtering to empty and keeps cluster diameters within 24–32 pixels", () => {
+  it("handles filtering to empty and keeps proportional cluster diameters within 24–64 pixels", () => {
     expect(createBusIndex([]).getClusters(world, 12)).toEqual([]);
     for (const count of [2, 9, 10, 99, 100, 10000])
       expect(clusterDiameter(count)).toBeGreaterThanOrEqual(24);
     for (const count of [2, 9, 10, 99, 100, 10000])
-      expect(clusterDiameter(count)).toBeLessThanOrEqual(32);
+      expect(clusterDiameter(count)).toBeLessThanOrEqual(64);
   });
   it("does not change the index when querying multiple viewports", () => {
     const index = createBusIndex(
@@ -129,4 +129,10 @@ describe("Composição dos agrupamentos", () => {
       }
     }
   });
+});
+
+it("makes count differences clear while offering truly uniform group sizes", () => {
+  expect(clusterDiameter(100)).toBeGreaterThan(clusterDiameter(10) * 2.5);
+  expect(clusterDiameter(10, "uniform")).toBe(clusterDiameter(100, "uniform"));
+  expect(clusterDiameter(10000)).toBeLessThanOrEqual(64);
 });

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { colorSegments } from "./clusters";
-import { readVisual, DEFAULT_VISUAL, VISUAL_KEY } from "./visualization";
+import {
+  readVisual,
+  DEFAULT_VISUAL,
+  VISUAL_KEY,
+  heatAppearance,
+} from "./visualization";
 afterEach(() => {
   vi.restoreAllMocks();
   window.localStorage.clear();
@@ -34,7 +39,7 @@ describe("Preferências e composição", () => {
       VISUAL_KEY,
       JSON.stringify({ ...visual, selectedBus: "private" }),
     );
-    expect(readVisual()).toEqual(visual);
+    expect(readVisual()).toEqual({ ...DEFAULT_VISUAL, ...visual });
   });
   it("represents frequency or presence without changing counts, including unknown colors", () => {
     const counts = { "#002F6C": 3, "#FF671F": 1, "#78838B": 0 };
@@ -46,4 +51,40 @@ describe("Preferências e composição", () => {
     expect(counts["#002F6C"]).toBe(3);
     expect(colorSegments({}, "equal")).toEqual([]);
   });
+});
+
+it("increases heat visibility monotonically without changing the observed population", () => {
+  const low = heatAppearance(25, "density");
+  const normal = heatAppearance(100, "density");
+  const high = heatAppearance(200, "density");
+  expect(low.max).toBeGreaterThan(normal.max);
+  expect(high.max).toBeLessThan(normal.max);
+  expect(low.opacity).toBeLessThan(normal.opacity);
+  expect(high.opacity).toBeGreaterThan(normal.opacity);
+  expect(heatAppearance(100, "mixed").opacity).toBeLessThan(normal.opacity);
+});
+it("validates new preferences and migrates previously saved settings", () => {
+  const legacy = {
+    mode: "density",
+    composition: "equal",
+    groupScale: 1.4,
+    busDiameter: 13,
+  };
+  window.localStorage.setItem(VISUAL_KEY, JSON.stringify(legacy));
+  expect(readVisual()).toEqual({ ...DEFAULT_VISUAL, ...legacy });
+  const updated = {
+    ...DEFAULT_VISUAL,
+    groupSizing: "uniform",
+    heatIntensity: 175,
+  };
+  window.localStorage.setItem(VISUAL_KEY, JSON.stringify(updated));
+  expect(readVisual()).toEqual(updated);
+  for (const invalid of [
+    { ...updated, heatIntensity: 0 },
+    { ...updated, heatIntensity: 201 },
+    { ...updated, groupSizing: "other" },
+  ]) {
+    window.localStorage.setItem(VISUAL_KEY, JSON.stringify(invalid));
+    expect(readVisual()).toEqual(DEFAULT_VISUAL);
+  }
 });

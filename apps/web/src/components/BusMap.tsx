@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import { HeatLayer } from "leaflet.heat";
-import type { Visualization } from "../visualization";
+import { heatAppearance, type Visualization } from "../visualization";
 import type { Vehicle } from "../api/positions";
 import type { RouteCollection } from "../api/network";
 import {
@@ -22,7 +22,8 @@ import {
 import "leaflet/dist/leaflet.css";
 
 // The plugin supports Leaflet 1.9 at runtime; its bundled Layer types target 2.x.
-type CompatibleHeatLayer = L.Layer & Pick<HeatLayer, "setLatLngs">;
+type CompatibleHeatLayer = L.Layer &
+  Pick<HeatLayer, "setLatLngs" | "setOptions">;
 const CENTER: L.LatLngExpression = [-23.5505, -46.6333];
 type Entry = {
   marker: L.Marker | L.CircleMarker;
@@ -30,7 +31,8 @@ type Entry = {
   signature?: string;
 };
 function groupIcon(count: number, colors: ColorCounts, visual: Visualization) {
-  const diameter = clusterDiameter(count) * visual.groupScale;
+  const diameter =
+    clusterDiameter(count, visual.groupSizing) * visual.groupScale;
   const label = document.createElement("span");
   label.textContent = String(count);
   if (count >= 10000) label.style.fontSize = "9px";
@@ -98,7 +100,10 @@ function BusMap({
     instance.getPane("plannedRoutes")!.style.pointerEvents = "none";
     instance.createPane("vehiclePositions").style.zIndex = "450";
     instance.createPane("vehicleClusters").style.zIndex = "460";
-    vehicleRenderer.current = L.canvas({ pane: "vehiclePositions", tolerance: 7 });
+    vehicleRenderer.current = L.canvas({
+      pane: "vehiclePositions",
+      tolerance: 7,
+    });
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -114,9 +119,9 @@ function BusMap({
       pane: "density",
       radius: 25,
       blur: 15,
-      minOpacity: 0.05,
-      max: 8,
-      maxZoom: 16,
+      minOpacity: 0.08,
+      max: 4,
+      maxZoom: 15,
       gradient: {
         0.1: "#e0c9f0",
         0.45: "#b07acd",
@@ -162,11 +167,12 @@ function BusMap({
       layer.setLatLngs([]);
       return;
     }
-    instance.getPane("density")!.style.opacity =
-      visual.mode === "mixed" ? "0.25" : "0.45";
+    const appearance = heatAppearance(visual.heatIntensity, visual.mode);
+    instance.getPane("density")!.style.opacity = String(appearance.opacity);
+    layer.setOptions({ max: appearance.max });
     layer.setLatLngs(vehicles.map((bus) => [bus.latitude, bus.longitude, 1]));
     if (!instance.hasLayer(layer)) layer.addTo(instance);
-  }, [vehicles, visual.mode]);
+  }, [vehicles, visual.mode, visual.heatIntensity]);
 
   useEffect(() => {
     const layer = focusLayer.current;
@@ -229,6 +235,7 @@ function BusMap({
             colors,
             visual.composition,
             visual.groupScale,
+            visual.groupSizing,
             count,
           ]);
           if (!entry) {

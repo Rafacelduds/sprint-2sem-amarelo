@@ -45,8 +45,14 @@ export function createBusIndex(
     })),
   );
 }
-export function clusterDiameter(count: number) {
-  return count < 10 ? 24 : count < 100 ? 28 : 32;
+export function clusterDiameter(
+  count: number,
+  sizing: "proportional" | "uniform" = "proportional",
+) {
+  // Scale area with count; bounded sizes keep small groups legible and dense maps usable.
+  return sizing === "uniform"
+    ? 28
+    : Math.max(24, Math.min(64, 24 * Math.sqrt(count / 10)));
 }
 export function clusterPage(index: BusIndex, id: number, page: number) {
   return index

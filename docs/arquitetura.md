@@ -40,7 +40,7 @@ O catálogo público `/network/catalog` e a geometria `/network/routes/{line_id}
 
 O mapa usa Supercluster sobre as posições já filtradas, com histogramas de cores em `map/reduce`. Os histogramas são copiados antes da redução para preservar os agregados dos níveis filhos. Anéis representam a proporção de posições ou a presença de cada cor, com centro neutro para a contagem; cores desconhecidas permanecem em cinza. Pan/zoom consultam o mesmo índice; dados, filtros ou catálogo de cores o reconstroem. Preferências de tamanho/composição não alteram o índice. Marcadores e ícones são reutilizados enquanto sua aparência continua igual.
 
-A camada Canvas Leaflet.heat 1.0.1 recebe as mesmas posições filtradas (peso 1), incluindo horários antigos/desconhecidos. Usa raio 25 px, blur 15 px, intensidade máxima 8 e zoom de referência 16; a legenda informa concentração relativa e dependência do zoom. Panes separam base, densidade (z=340, opacidade 45% ou 25% no Misto), percursos (350), veículos (450), grupos (460) e destaque selecionado (470). Densidade, percursos e destaque não interceptam cliques. A integração adapta apenas a tipagem da classe Layer do plugin, cujos tipos distribuídos visam Leaflet 2; o runtime continua no Leaflet 1.9 do projeto.
+A camada Canvas Leaflet.heat 1.0.1 recebe as mesmas posições filtradas (peso 1), incluindo horários antigos/desconhecidos. Usa raio 25 px, blur 15 px, máximo de intensidade 4 e zoom de referência 15; o controle visual de 25–200% divide esse máximo pelo ganho escolhido, sem mudar as posições nem seus pesos; a legenda informa concentração relativa e dependência do zoom. Panes separam base, densidade (z=340, opacidade inicial 70% ou 48% no Misto, ajustada pela raiz do ganho e limitada a 90%), percursos (350), veículos (450), grupos (460) e destaque selecionado (470). Densidade, percursos e destaque não interceptam cliques. A integração adapta apenas a tipagem da classe Layer do plugin, cujos tipos distribuídos visam Leaflet 2; o runtime continua no Leaflet 1.9 do projeto.
 
 A seleção de veículo é mantida por ID no React, com informações derivadas do snapshot filtrado atual; posição ausente/expirada recebe aviso. Detalhes e páginas coincidentes usam o painel existente em desktop/celular. No modo Densidade, só o veículo selecionado ganha destaque, e a lista permanece disponível. Não há popup de ônibus sobre o mapa.
 
@@ -62,3 +62,10 @@ catálogo de objetos e manifestos de proveniência; consulte
 [armazenamento](armazenamento-e-proveniencia.md).
 
 A coleta Olho Vivo está em `apps/api/src/api/collection`, executada em processo separado. Persiste ciclos, uma inbox de respostas e posições deduplicadas no PostgreSQL; veja o [contrato da coleta](coleta.md). O acervo bruto imutável S3 continua sob responsabilidade da US12. Processamento analítico e publicação de indicadores ainda dependem das respectivas US. Escolhas com impacto em várias US precisam de justificativa em [decisoes.md](decisoes.md).
+
+
+### Controles simplificados da visualização
+
+Grupos, Calor e Misto ficam sempre visíveis. Controles contextuais mostram intensidade somente com calor e tamanho por quantidade/uniforme somente com grupos; escala geral, tamanho dos ônibus e composição das cores ficam em Mais opções. O diâmetro proporcional é `clamp(24 * sqrt(contagem / 10), 24, 64)` px, antes da escala visual de 100–150%; dez posições têm 24 px e cem têm 64 px. No modo uniforme, todos têm 28 px antes da escala. O limite evita crescimento ilimitado; tamanhos não devem ser lidos como comparação quantitativa exata fora desse intervalo. Ambos os modos preservam contagens, anéis e agrupamento espacial.
+
+As preferências anteriores são migradas de forma aditiva na mesma chave local: valores existentes são preservados; campos novos ausentes recebem intensidade 100% e tamanho por quantidade. Intensidade e estilo de tamanho também são salvos e restaurados com os padrões.
