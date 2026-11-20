@@ -171,7 +171,7 @@ importação histórica e proveniência estão no contrato de armazenamento acim
 
 ## Mapa ao vivo (US22)
 
-Configure `OLHO_VIVO_TOKEN` em `apps/api/.env` (modelo em `apps/api/.env.example`). O token nunca vai ao frontend. A API carrega `apps/api/.env` independentemente do diretório de execução; variáveis do processo têm precedência. O Compose injeta esse arquivo opcional e mantém os endereços internos de PostgreSQL/S3. Sem token, a tela informa indisponibilidade, sem dados fictícios.
+Configure `CHAVE_API_OLHO_VIVO` em `apps/api/.env` (modelo em `apps/api/.env.example`): a mesma configuração atende mapa e coletor. Ambos também aceitam `OLHOVIVO_TOKEN` e `OLHO_VIVO_TOKEN`, nessa ordem de precedência após `CHAVE_API_OLHO_VIVO`; valores vazios são ignorados. Mantenha apenas um nome configurado. O token nunca vai ao frontend. A API carrega `apps/api/.env` independentemente do diretório de execução. O Compose repassa o mesmo token aos dois serviços e mantém os endereços internos de PostgreSQL/S3. Sem token, a tela informa indisponibilidade, sem dados fictícios.
 
 Execute API e frontend pelos comandos de desenvolvimento acima. O Vite usa a API local na porta 8000; no Compose, `API_PROXY_TARGET` aponta para `http://api:8000`. O mapa não precisa de banco/S3 para esta consulta.
 

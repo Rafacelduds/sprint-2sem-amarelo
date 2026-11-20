@@ -1,16 +1,22 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+OLHO_VIVO_TOKEN_ALIASES = AliasChoices(
+    "CHAVE_API_OLHO_VIVO", "OLHOVIVO_TOKEN", "OLHO_VIVO_TOKEN", "olhovivo_token", "olho_vivo_token"
+)
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=Path(__file__).resolve().parents[2] / ".env", extra="ignore"
+        env_file=Path(__file__).resolve().parents[2] / ".env", extra="ignore", env_ignore_empty=True
     )
 
-    olho_vivo_token: SecretStr = SecretStr("")
+    olho_vivo_token: SecretStr = Field(
+        default=SecretStr(""), validation_alias=OLHO_VIVO_TOKEN_ALIASES
+    )
     olho_vivo_base_url: str = "https://api.olhovivo.sptrans.com.br/v2.1"
 
     network_catalog_path: str | None = None

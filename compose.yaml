@@ -92,6 +92,7 @@ services:
       - path: ./apps/api/.env
         required: false
     environment:
+      CHAVE_API_OLHO_VIVO: ${CHAVE_API_OLHO_VIVO:-${OLHOVIVO_TOKEN:-${OLHO_VIVO_TOKEN:-}}}
       S3_RESTORE_MAP: /run/configs/storage-restore-map.json
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
@@ -122,7 +123,7 @@ services:
     environment:
       PYTHONPATH: /workspace/apps/api/src
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
-      OLHOVIVO_TOKEN: ${CHAVE_API_OLHO_VIVO:-${OLHOVIVO_TOKEN:-}}
+      CHAVE_API_OLHO_VIVO: ${CHAVE_API_OLHO_VIVO:-${OLHOVIVO_TOKEN:-${OLHO_VIVO_TOKEN:-}}}
       COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-30}
       GTFS_SOURCE_ID: ${GTFS_SOURCE_ID:-sptrans}
       COLLECTION_TIMEOUT_SECONDS: ${COLLECTION_TIMEOUT_SECONDS:-5}

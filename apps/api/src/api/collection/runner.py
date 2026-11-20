@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID, uuid4
 
-from pydantic import AliasChoices, Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -23,11 +23,14 @@ logger = logging.getLogger(__name__)
 
 class CollectionSettings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=Settings.model_config.get("env_file"), extra="ignore", hide_input_in_errors=True
+        env_file=Settings.model_config.get("env_file"),
+        extra="ignore",
+        hide_input_in_errors=True,
+        env_ignore_empty=True,
     )
     olhovivo_token: SecretStr = Field(
         default=SecretStr(""),
-        validation_alias=AliasChoices("CHAVE_API_OLHO_VIVO", "OLHOVIVO_TOKEN", "olhovivo_token"),
+        validation_alias=Settings.model_fields["olho_vivo_token"].validation_alias,
     )
     olhovivo_base_url: str = "https://api.olhovivo.sptrans.com.br/v2.1"
     collection_interval_seconds: int = Field(default=30, ge=15, le=60)

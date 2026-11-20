@@ -17,6 +17,7 @@ from api.network_gtfs import (
     normalize_destination,
     prepare_feed,
 )
+from api.storage.s3 import S3Archive
 from botocore.response import StreamingBody
 
 
@@ -106,7 +107,12 @@ def test_archive_copy_hash_and_cache_are_checked(tmp_path: Path, monkeypatch: py
     )
     client = MagicMock()
     client.get_object.return_value = {"Body": StreamingBody(io.BytesIO(data), len(data))}
-    monkeypatch.setattr("api.network_gtfs.archive_client", lambda: client)
+    client.head_object.return_value = {"Metadata": {"sha256": version}, "ContentLength": len(data)}
+    archive = S3Archive(
+        "bucket", endpoint="https://synthetic.invalid", access_key="test", secret_key="test"
+    )
+    archive.client = client
+    monkeypatch.setattr("api.network_gtfs.archive_from_settings", MagicMock(return_value=archive))
     monkeypatch.setattr(get_settings(), "network_cache_dir", tmp_path / "cache")
     feed = load_feed(ref)
     assert feed.match("701A-10", "Metro Vila Madalena")
