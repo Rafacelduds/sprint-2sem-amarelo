@@ -6,9 +6,22 @@ vi.mock("./MapPage", () => ({ default: () => <main>Mapa da rede</main> }));
 vi.mock("./DocumentsPage", () => ({
   default: () => <main>Consulta documental</main>,
 }));
+vi.mock("./ReliabilityPage", () => ({ default: () => <main>Consulta de confiabilidade</main> }));
 afterEach(() => {
   cleanup();
   window.history.replaceState(null, "", "/");
+});
+
+it("abre confiabilidade por link direto e permite voltar ao acervo", () => {
+  window.history.replaceState(null, "", "/#confiabilidade");
+  render(<App />);
+  expect(screen.getByText("Consulta de confiabilidade")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Confiabilidade" })).toHaveAttribute("aria-current", "page");
+  expect(document.title).toContain("Confiabilidade da coleta");
+  window.history.replaceState(null, "", "/#acervo");
+  fireEvent(window, new HashChangeEvent("hashchange"));
+  expect(screen.getByText("Consulta documental")).toBeInTheDocument();
+  expect(screen.queryByText("Consulta de confiabilidade")).not.toBeInTheDocument();
 });
 
 it("abre link direto do acervo e acompanha navegação por hash", () => {
