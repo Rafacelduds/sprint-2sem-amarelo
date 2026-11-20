@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DocumentDetailsDocumentsIdentityGetData, DocumentDetailsDocumentsIdentityGetErrors, DocumentDetailsDocumentsIdentityGetResponses, DocumentPdfDocumentsIdentityPdfGetData, DocumentPdfDocumentsIdentityPdfGetErrors, DocumentPdfDocumentsIdentityPdfGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses, SearchDocumentsDocumentsGetData, SearchDocumentsDocumentsGetErrors, SearchDocumentsDocumentsGetResponses } from './types.gen';
+import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DocumentDetailsDocumentsIdentityGetData, DocumentDetailsDocumentsIdentityGetErrors, DocumentDetailsDocumentsIdentityGetResponses, DocumentPdfDocumentsIdentityPdfGetData, DocumentPdfDocumentsIdentityPdfGetErrors, DocumentPdfDocumentsIdentityPdfGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses, ScheduleCatalogSchedulesGetData, ScheduleCatalogSchedulesGetErrors, ScheduleCatalogSchedulesGetResponses, ScheduleDeparturesSchedulesRunIdDeparturesGetData, ScheduleDeparturesSchedulesRunIdDeparturesGetErrors, ScheduleDeparturesSchedulesRunIdDeparturesGetResponses, SearchDocumentsDocumentsGetData, SearchDocumentsDocumentsGetErrors, SearchDocumentsDocumentsGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -144,6 +144,30 @@ export const documentDetailsDocumentsIdentityGet = <ThrowOnError extends boolean
 export const documentPdfDocumentsIdentityPdfGet = <ThrowOnError extends boolean = false>(options: Options<DocumentPdfDocumentsIdentityPdfGetData, ThrowOnError>) => {
     return (options.client ?? client).get<DocumentPdfDocumentsIdentityPdfGetResponses, DocumentPdfDocumentsIdentityPdfGetErrors, ThrowOnError>({
         url: '/documents/{identity}/pdf',
+        ...options
+    });
+};
+
+/**
+ * Schedule Catalog
+ *
+ * Execuções publicadas no dia, mais recentes primeiro; vazio não significa zero serviço.
+ */
+export const scheduleCatalogSchedulesGet = <ThrowOnError extends boolean = false>(options: Options<ScheduleCatalogSchedulesGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<ScheduleCatalogSchedulesGetResponses, ScheduleCatalogSchedulesGetErrors, ThrowOnError>({
+        url: '/schedules',
+        ...options
+    });
+};
+
+/**
+ * Schedule Departures
+ *
+ * Parquet verificado, ordem original e multiplicidades preservadas; não dispara coleta.
+ */
+export const scheduleDeparturesSchedulesRunIdDeparturesGet = <ThrowOnError extends boolean = false>(options: Options<ScheduleDeparturesSchedulesRunIdDeparturesGetData, ThrowOnError>) => {
+    return (options.client ?? client).get<ScheduleDeparturesSchedulesRunIdDeparturesGetResponses, ScheduleDeparturesSchedulesRunIdDeparturesGetErrors, ThrowOnError>({
+        url: '/schedules/{run_id}/departures',
         ...options
     });
 };

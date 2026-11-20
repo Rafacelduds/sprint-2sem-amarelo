@@ -7,7 +7,45 @@ História: [US04 no Trello](https://trello.com/c/9bob1kHl). O processo
 partidas por linha e data de referência em Parquet, separado da API HTTP.
 Quando a fonte oficial não fornece uma linha/dia, pode usar uma referência
 GTFS da US02. Uma linha usa uma fonte inteira, sem misturar sentidos de fontes
-diferentes. Não altera o contrato HTTP nem o cliente TypeScript.
+diferentes. A consulta pública descrita abaixo lê somente os artefatos publicados.
+
+### Consulta pública — continuação US04
+
+Task: https://trello.com/c/y3dQ2yyL. A tela `/#programacao` seleciona dia,
+execução publicada, linha e sentido no sistema da própria fonte. Não coleta
+nem recalcula horários ao consultar. O contrato HTTP parte dos modelos FastAPI
+e gera o cliente TypeScript:
+
+- `GET /schedules?day=YYYY-MM-DD`: execuções publicadas para o dia, mais recentes
+  primeiro, com linhas, estado da fonte, captura, totais declarados/listados,
+  hashes e ressalvas. Lista vazia significa nenhuma publicação encontrada.
+- `GET /schedules/{run_id}/departures?line=...&direction=...&offset=0&limit=100`:
+  partidas do Parquet verificado, na ordem original `source_order`, sem deduplicar
+  multiplicidades nem converter `00:xx` em `24:xx`. Sentido é opcional; limite
+  de 1–500 registros. Retorna total filtrado e totais por sentido.
+  Use `direction=unknown` para sentido GTFS não informado; não se inventa um código.
+
+404 indica execução/linha ausente; 422, filtro inválido; 503, armazenamento,
+manifesto ou derivado indisponível/inconsistente. Uma captura com linha
+`unavailable` é apresentada como indisponibilidade da fonte registrada, sem
+confundir com GTFS conhecido sem partidas (`gtfs_no_departures`). Não se escolhe
+automaticamente uma execução antiga quando a mais recente falha ou está incompleta.
+O usuário pode selecionar outra execução explicitamente. Filtros/atualização
+retiram os resultados anteriores enquanto a nova consulta está pendente.
+
+A leitura confere bytes/hashes antes de publicar partidas e nunca expõe bucket,
+chave, credenciais ou erros internos. Nesta versão a busca percorre até 1.000
+manifestos de até 8 MiB e aceita derivados de até 128 MiB; exceder os limites
+retorna 503. Histórico maior exigirá índice próprio. As rotas são somente leitura
+e não alteram o aceite histórico com ressalva (22/30), brutos ou regras temporais.
+
+Para usar uma publicação já preservada em outro bucket/versão, o leitor aplica
+o mesmo `S3_RESTORE_MAP` da US32, sem reescrever o manifesto. A chave lógica
+continua identificando os bytes originais; o mapa resolve o objeto físico
+recuperado e o download confere tamanho e hash. O arquivo do mapa fica no
+ambiente, sem credenciais, e não deve ser versionado como dependência pessoal.
+No Compose, configure `S3_RESTORE_MAP` com o caminho local do JSON antes de
+iniciar/recriar a API; ele será montado no destino já previsto pelo serviço.
 
 O critério documental exige prioridade da fonte oficial, alternativa GTFS e
 conferência dos totais em 30 linhas. Em 20/11/2026, Pedro transmitiu o aceite de

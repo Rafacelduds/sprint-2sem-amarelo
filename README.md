@@ -4,7 +4,8 @@ Contexto compartilhado, arquitetura, dados e fluxo de contribuição estão no
 [índice da documentação](docs/README.md). Para começar a desenvolver, siga o setup abaixo.
 
 API FastAPI e aplicação React/Vite com mapa público de posições dos ônibus (US22),
-consulta de documentos oficiais (US05) e relatório diário de confiabilidade (US13).
+consulta de documentos oficiais (US05), relatório diário de confiabilidade (US13)
+e programação publicada por linha/dia (US04).
 
 ## Stack
 

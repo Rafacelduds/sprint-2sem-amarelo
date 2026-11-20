@@ -77,6 +77,58 @@ export type CatalogLine = {
 };
 
 /**
+ * DepartureItem
+ */
+export type DepartureItem = {
+    /**
+     * Direction
+     */
+    direction: string;
+    /**
+     * Direction System
+     */
+    direction_system: 'sptrans_itinerarios' | 'gtfs';
+    /**
+     * Departure Seconds
+     */
+    departure_seconds: number;
+    /**
+     * Time
+     */
+    time: string;
+    /**
+     * Kind
+     */
+    kind: 'official' | 'gtfs_fixed' | 'gtfs_exact' | 'gtfs_frequency_estimate';
+    /**
+     * Source Order
+     */
+    source_order: number;
+    /**
+     * Trip Id
+     */
+    trip_id: string | null;
+};
+
+/**
+ * DirectionTotal
+ */
+export type DirectionTotal = {
+    /**
+     * Direction
+     */
+    direction: string;
+    /**
+     * Written
+     */
+    written: number;
+    /**
+     * Declared
+     */
+    declared: number | null;
+};
+
+/**
  * DocumentPage
  */
 export type DocumentPage = {
@@ -389,6 +441,40 @@ export type NetworkLine = {
 };
 
 /**
+ * PublishedLine
+ */
+export type PublishedLine = {
+    /**
+     * Line
+     */
+    line: string;
+    /**
+     * Status
+     */
+    status: 'official' | 'gtfs' | 'gtfs_no_departures' | 'unavailable';
+    /**
+     * Source Sha256
+     */
+    source_sha256?: string | null;
+    /**
+     * Expected
+     */
+    expected?: {
+        [key: string]: number;
+    } | null;
+    /**
+     * Written
+     */
+    written?: {
+        [key: string]: number;
+    } | number | null;
+    /**
+     * Declared Counts Match
+     */
+    declared_counts_match?: boolean | null;
+};
+
+/**
  * ReliabilityReport
  */
 export type ReliabilityReport = {
@@ -530,6 +616,56 @@ export type RouteGeometry = {
 };
 
 /**
+ * ScheduleCatalog
+ */
+export type ScheduleCatalog = {
+    /**
+     * Day
+     */
+    day: string;
+    /**
+     * Runs
+     */
+    runs: Array<ScheduleRun>;
+};
+
+/**
+ * ScheduleDepartures
+ */
+export type ScheduleDepartures = {
+    run: ScheduleRun;
+    line: PublishedLine;
+    /**
+     * Source Captured At
+     */
+    source_captured_at: string | null;
+    /**
+     * Direction
+     */
+    direction: string | null;
+    /**
+     * Direction Totals
+     */
+    direction_totals: Array<DirectionTotal>;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Offset
+     */
+    offset: number;
+    /**
+     * Limit
+     */
+    limit: number;
+    /**
+     * Items
+     */
+    items: Array<DepartureItem>;
+};
+
+/**
  * ScheduleReference
  */
 export type ScheduleReference = {
@@ -561,6 +697,88 @@ export type ScheduleReference = {
      * Has Discrepancies
      */
     has_discrepancies: boolean;
+};
+
+/**
+ * ScheduleRun
+ */
+export type ScheduleRun = {
+    /**
+     * Run Id
+     */
+    run_id: string;
+    /**
+     * Service Date
+     */
+    service_date: string;
+    /**
+     * Day Type
+     */
+    day_type: 'U' | 'S' | 'D';
+    /**
+     * Timezone
+     */
+    timezone: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Finished At
+     */
+    finished_at: string;
+    /**
+     * Rule Version
+     */
+    rule_version: string;
+    /**
+     * Code Version
+     */
+    code_version: string;
+    /**
+     * Source Url
+     */
+    source_url: string | null;
+    /**
+     * Validity
+     */
+    validity: string;
+    /**
+     * Operational Day Cutoff
+     */
+    operational_day_cutoff?: null;
+    /**
+     * Manifest Sha256
+     */
+    manifest_sha256: string;
+    /**
+     * Parquet Sha256
+     */
+    parquet_sha256: string;
+    /**
+     * Lines
+     */
+    lines: Array<PublishedLine>;
+    /**
+     * Official Lines Checked
+     */
+    official_lines_checked: number;
+    /**
+     * Official Lines Concordant
+     */
+    official_lines_concordant: number;
+    /**
+     * Has Discrepancies
+     */
+    has_discrepancies: boolean;
+    /**
+     * Acceptance 30 Lines
+     */
+    acceptance_30_lines: boolean;
+    /**
+     * Complete
+     */
+    complete: boolean;
 };
 
 /**
@@ -1079,3 +1297,92 @@ export type DocumentPdfDocumentsIdentityPdfGetResponses = {
 };
 
 export type DocumentPdfDocumentsIdentityPdfGetResponse = DocumentPdfDocumentsIdentityPdfGetResponses[keyof DocumentPdfDocumentsIdentityPdfGetResponses];
+
+export type ScheduleCatalogSchedulesGetData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Day
+         */
+        day: string;
+    };
+    url: '/schedules';
+};
+
+export type ScheduleCatalogSchedulesGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Publicação indisponível ou integridade não confirmada
+     */
+    503: unknown;
+};
+
+export type ScheduleCatalogSchedulesGetError = ScheduleCatalogSchedulesGetErrors[keyof ScheduleCatalogSchedulesGetErrors];
+
+export type ScheduleCatalogSchedulesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScheduleCatalog;
+};
+
+export type ScheduleCatalogSchedulesGetResponse = ScheduleCatalogSchedulesGetResponses[keyof ScheduleCatalogSchedulesGetResponses];
+
+export type ScheduleDeparturesSchedulesRunIdDeparturesGetData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query: {
+        /**
+         * Line
+         */
+        line: string;
+        /**
+         * Direction
+         */
+        direction?: string | null;
+        /**
+         * Offset
+         */
+        offset?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/schedules/{run_id}/departures';
+};
+
+export type ScheduleDeparturesSchedulesRunIdDeparturesGetErrors = {
+    /**
+     * Execução ou linha não publicada
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Publicação indisponível ou integridade não confirmada
+     */
+    503: unknown;
+};
+
+export type ScheduleDeparturesSchedulesRunIdDeparturesGetError = ScheduleDeparturesSchedulesRunIdDeparturesGetErrors[keyof ScheduleDeparturesSchedulesRunIdDeparturesGetErrors];
+
+export type ScheduleDeparturesSchedulesRunIdDeparturesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ScheduleDepartures;
+};
+
+export type ScheduleDeparturesSchedulesRunIdDeparturesGetResponse = ScheduleDeparturesSchedulesRunIdDeparturesGetResponses[keyof ScheduleDeparturesSchedulesRunIdDeparturesGetResponses];
