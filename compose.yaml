@@ -111,6 +111,33 @@ services:
     ports:
       - "8000:8000"
 
+  gtfs:
+    profiles: [gtfs]
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: [".venv/bin/python", "-m", "api.gtfs"]
+    healthcheck:
+      disable: true
+    environment:
+      PYTHONPATH: /workspace/apps/api/src
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
+      S3_BUCKET: ${S3_BUCKET:-raw-data}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      GTFS_SOURCE_URL: ${GTFS_SOURCE_URL:-https://www.sptrans.com.br/umbraco/Surface/PerfilDesenvolvedor/BaixarGTFS}
+      GTFS_SOURCE_ID: ${GTFS_SOURCE_ID:-sptrans}
+      GTFS_INTERVAL_SECONDS: ${GTFS_INTERVAL_SECONDS:-86400}
+      GTFS_FAILURE_INTERVAL_SECONDS: ${GTFS_FAILURE_INTERVAL_SECONDS:-300}
+    depends_on:
+      api:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+
   collector:
     profiles: [coleta]
     restart: unless-stopped

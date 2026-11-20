@@ -65,7 +65,7 @@ export default function MapPage() {
       getCatalog(controller.signal)
         .then(setCatalog)
         .catch(() => {
-          /* Live positions remain usable. */
+          if (!controller.signal.aborted) setCatalog(null);
         });
     void update();
     const timer = setInterval(() => void update(), 60_000);
@@ -674,14 +674,25 @@ export default function MapPage() {
           SPTrans / Olho Vivo · coleta {collected} (Brasília). Ausência de GPS
           não comprova viagem não realizada.
         </p>
-        {catalog?.version && (
+        {catalog?.status === "ready" && catalog.version ? (
           <p>
-            GTFS: {catalog.version.slice(0, 12)} · captura{" "}
+            Fonte GTFS: {catalog.source || "não informada"}.
+            <br />
+            Captura: {" "}
             {catalog.captured_at
-              ? new Date(catalog.captured_at).toLocaleDateString("pt-BR")
+              ? new Date(catalog.captured_at).toLocaleString("pt-BR", {
+                  timeZone: "America/Sao_Paulo",
+                })
               : "não informada"}
-            . A data de captura não comprova vigência.
+            {" "}(America/Sao_Paulo).
+            <br />
+            SHA-256: <code className="gtfs-hash">{catalog.version}</code>
+            A data de captura não comprova vigência. Correspondências por
+            letreiro e destino; códigos de sentido das fontes são independentes.
           </p>
+        ) : (
+          <p>Referência GTFS indisponível. Posições disponíveis continuam visíveis
+            sem associações de área, cor ou percurso não comprovadas.</p>
         )}
       </details>
     </main>
