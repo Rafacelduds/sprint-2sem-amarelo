@@ -14,6 +14,35 @@ períodos de referência GTFS e versões efetivamente utilizadas. Inclui as exec
 de programação encontradas para o dia, com hashes e divergências preservadas.
 Manutenção do Olho Vivo nunca é confirmada automaticamente.
 
+## Consulta no produto
+
+A navegação **Confiabilidade**, em `/#confiabilidade`, consulta o derivado público
+pelo cliente gerado do OpenAPI. A [continuação frontend da US13](https://trello.com/c/cxOVnRRC)
+permite selecionar o dia civil em São Paulo e atualizar a última publicação,
+sem iniciar coleta nem recalcular indicadores no navegador. Mostra período com
+fim exclusivo, fuso, geração, condição provisória, ciclos registrados, lacunas e
+suas evidências, referências GTFS e manifestos de programação disponíveis.
+
+Trocar o dia ou atualizar retira imediatamente os dados anteriores. Consultas
+anteriores são canceladas e respostas atrasadas ignoradas. Carregamento, 404
+(não publicado), erro de consulta e relatório publicado sem ciclos são estados
+distintos. Sem ciclos, a cobertura aparece como **Sem evidência**; ausência de
+registro não vira ausência de serviço ou zero falhas operacionais. Sem manifesto
+US04, a tela não declara ausência de programação oficial.
+
+O tempo sem lacuna é `(duração analisada − gap_seconds) / duração analisada`;
+inclui a interpretação de falhas parciais do derivado, não mede perda de GPS.
+O contrato atual não publica uma contagem exata de ciclos esperados sob mudanças
+de cadência. A tela identifica como **estimativa** o teto de duração analisada
+dividida por `fallback_interval_seconds`. Não compara esse valor diretamente
+aos ciclos registrados, que podem ter retentativas/intervalos diferentes.
+O intervalo de referência, a quantidade de ciclos históricos sem intervalo e a
+tolerância do agendador ficam explícitos. Não há alteração da regra `us13-v1`.
+
+Hashes completos, fonte GTFS, vínculos das observações, execuções de programação,
+divergências e limitações permanecem consultáveis em telas pequenas. A tabela
+de lacunas tem rolagem horizontal própria, sem alargar a página.
+
 ## Executar e consultar
 
 Aplique as migrações conforme o README. Configure `DATABASE_URL`, S3 e

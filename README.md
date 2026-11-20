@@ -4,7 +4,8 @@ Contexto compartilhado, arquitetura, dados e fluxo de contribuição estão no
 [índice da documentação](docs/README.md). Para começar a desenvolver, siga o setup abaixo.
 
 API FastAPI e aplicação React/Vite com mapa público de posições dos ônibus (US22),
-consulta de documentos oficiais (US05) e programação publicada por linha/dia (US04).
+consulta de documentos oficiais (US05), relatório diário de confiabilidade (US13)
+e programação publicada por linha/dia (US04).
 
 ## Stack
 
@@ -29,7 +30,7 @@ Acesse:
 
 - frontend: http://localhost:5173
 - acervo documental: http://localhost:5173/#acervo
-- programação: http://localhost:5173/#programacao
+- confiabilidade da coleta: http://localhost:5173/#confiabilidade
 - API: http://localhost:8000
 - Swagger: http://localhost:8000/docs
 - health: http://localhost:8000/health
