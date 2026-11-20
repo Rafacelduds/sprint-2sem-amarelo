@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import MapPage from "./MapPage";
 import DocumentsPage from "./DocumentsPage";
+import SchedulesPage from "./SchedulesPage";
 import "./Navigation.css";
 
 function subscribe(listener: () => void) {
@@ -10,10 +11,10 @@ function subscribe(listener: () => void) {
 
 export default function App() {
   const page = useSyncExternalStore(subscribe, () =>
-    window.location.hash === "#acervo" ? "documents" : "map",
+    window.location.hash === "#programacao" ? "schedules" : window.location.hash === "#acervo" ? "documents" : "map",
   );
   useEffect(() => {
-    document.title = `ObservaÔnibus — ${page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
+    document.title = `ObservaÔnibus — ${page === "schedules" ? "Programação das linhas" : page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
   }, [page]);
   return (
     <>
@@ -31,9 +32,10 @@ export default function App() {
           >
             Acervo documental
           </a>
+          <a href="#programacao" aria-current={page === "schedules" ? "page" : undefined}>Programação</a>
         </div>
       </nav>
-      {page === "documents" ? <DocumentsPage /> : <MapPage />}
+      {page === "schedules" ? <SchedulesPage /> : page === "documents" ? <DocumentsPage /> : <MapPage />}
     </>
   );
 }

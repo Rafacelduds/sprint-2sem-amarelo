@@ -10,6 +10,7 @@ from api.exports.routes import router as exports_router
 from api.live import router as live_router
 from api.network import router as network_router
 from api.reliability.routes import router as reliability_router
+from api.schedules.routes import router as schedules_router
 
 
 class HealthResponse(BaseModel):
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     application.include_router(exports_router)
     application.include_router(reliability_router)
     application.include_router(documents_router)
+    application.include_router(schedules_router)
     return application
 
 
