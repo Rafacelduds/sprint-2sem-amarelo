@@ -3,6 +3,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator
@@ -34,6 +35,7 @@ class CollectionSettings(BaseSettings):
     collection_max_retries: int = Field(default=5, ge=0, le=5)
     collection_cycle_budget_seconds: float = Field(default=50, gt=0, le=50)
     collection_alert_webhook: SecretStr | None = None
+    collection_alert_format: Literal["generic", "discord"] = "generic"
     database_url: SecretStr = SecretStr(
         "postgresql+asyncpg://amarelo:amarelo@localhost:5432/amarelo"
     )
@@ -89,7 +91,9 @@ class Collector:
         self.store = store
         self.settings = settings
         self.clock = clock or Clock()
-        self.alert = alert or WebhookAlert(settings.collection_alert_webhook)
+        self.alert = alert or WebhookAlert(
+            settings.collection_alert_webhook, settings.collection_alert_format
+        )
         self.guard = guard
         self.last_alert_attempt: float | None = None
         self.storage_down_since: datetime | None = None

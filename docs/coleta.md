@@ -17,6 +17,7 @@ Use os dois `--env-file` do README nos comandos Compose. O coletor aceita
 | `COLLECTION_TIMEOUT_SECONDS` | Timeout HTTP, padrão 5 segundos |
 | `COLLECTION_COMPANY_CODES` | Lista JSON opcional de empresas; sem ela, descoberta automática. Um recorte deve ser identificado como tal; disponível na execução Python |
 | `COLLECTION_ALERT_WEBHOOK` | URL HTTPS privada opcional; recebe os eventos JSON descritos abaixo |
+| `COLLECTION_ALERT_FORMAT` | `generic` (padrão, contrato JSON original) ou `discord` (mensagem no canal com confirmação) |
 | `COLLECTION_MAX_RETRIES` | De 0 a 5 novas tentativas, padrão 5; disponível na execução Python |
 | `COLLECTION_CYCLE_BUDGET_SECONDS` | Até 50 segundos para consultas/retentativas e gravações das respostas, padrão 50; disponível na execução Python |
 
@@ -69,7 +70,36 @@ Falhas são registradas separando origem e armazenamento. Ciclos incompletos rep
 
 O início da falha contínua é o primeiro ciclo incompleto desde o último sucesso integral, consultado no banco para sobreviver a reinícios. Após pelo menos 600 segundos, a verificação ao término do ciclo emite um alerta local e tenta o webhook, se configurado. O evento contém `event=collection_outage`, `cycle_id`, `started_at` em UTC e `text`. O receptor deve aceitar um POST JSON e devolver 2xx; integrações de canais com outro formato precisam de adaptação. A verificação pode ocorrer até um ciclo após atingir o limiar.
 
-Só uma resposta HTTP bem-sucedida marca `alerted_at`. Falha ou ausência de destino mantém a entrega pendente, com nova tentativa no máximo uma vez por minuto. Após entrega, não repete o alerta da mesma falha contínua; se o processo cair entre envio e confirmação, pode haver repetição — o receptor pode deduplicar por `cycle_id`. A configuração do canal e a entrega à equipe ainda estão pendentes: Victor pediu apenas preparar o webhook em 18/11/2026. Não coloque sua URL privada no Trello ou no Git.
+Só uma resposta HTTP bem-sucedida marca `alerted_at`. Falha ou ausência de destino mantém a entrega pendente, com nova tentativa no máximo uma vez por minuto. Após entrega, não repete o alerta da mesma falha contínua; se o processo cair entre envio e confirmação, pode haver repetição — o receptor genérico pode deduplicar por `cycle_id`. Não coloque sua URL privada no Trello ou no Git. Em 19/11/2026, Victor solicitou integrar o destino Discord; configuração e teste real devem ser conferidos antes de declarar entrega no canal.
+
+## Configurar os alertas no Discord
+
+No Discord, crie um servidor do projeto e um canal de **texto comum** chamado `alertas-coleta`. Em **Configurações do servidor → Integrações → Webhooks**, crie um webhook, selecione esse canal e dê um nome como `Coletor de ônibus`. Também é possível acessar as integrações pelas configurações do canal. Sua conta precisa da permissão de gerenciar webhooks. Copie a URL e salve somente em `apps/api/.env`:
+
+```dotenv
+COLLECTION_ALERT_WEBHOOK=https://discord.com/api/webhooks/SEU_ID/SEU_TOKEN
+COLLECTION_ALERT_FORMAT=discord
+```
+
+Use a URL copiada, sem acrescentar `/github`. O modo Discord envia `content` com início da ocorrência no fuso de São Paulo e identificador do ciclo, além de `allowed_mentions` vazio para não disparar menções. Solicita `wait=true` e só confirma entrega com HTTP 200 e identificador da mensagem retornado. Respostas inválidas, erros HTTP e timeout não confirmam entrega. Em HTTP 429, respeita `retry_after` antes de tentar enviar novamente, sem bloquear a coleta; se o corpo de limitação vier inválido, aguarda pelo menos um minuto. Não há alerta de recuperação neste recorte.
+
+Para validar uma única mensagem claramente identificada como **TESTE**, execute na raiz, depois de combinar o envio com quem acompanha o canal:
+
+```bash
+uv run --package amarelo-api python -m api.collection --test-alert
+```
+
+No PowerShell, com a venv já instalada, também pode usar `.\.venv\Scripts\python.exe -m api.collection --test-alert`. Esse modo não inicia a coleta, não precisa do token Olho Vivo, não acessa o banco e não altera o estado dos alertas reais. Código de saída 0 significa envio confirmado; 1 indica falha ou ausência de configuração. Confirme visualmente a mensagem no canal. Evite chamar esse comando repetidamente: cada execução envia um teste novo.
+
+Após alterar o `.env`, reinicie o processo do coletor. No Compose, recrie o serviço para carregar as variáveis:
+
+```bash
+docker compose --env-file apps/api/.env --env-file apps/web/.env --profile coleta up -d --build collector
+```
+
+O modo `generic` continua enviando o contrato JSON descrito acima, sem alterações para integrações existentes. A URL é uma credencial; quem a possui pode publicar no canal. Não a exponha em prints, commits ou logs.
+
+Referências: [criar webhook no Discord](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) e [contrato de execução](https://docs.discord.com/developers/resources/webhook#execute-webhook), consultados em 19/11/2026.
 
 O Compose reinicia o coletor após encerramento inesperado. Rodando pelo terminal, o laço retoma falhas de ciclos; se o processo for encerrado, é necessário reiniciar o comando ou usar um supervisor. A perda da conexão que mantém o lock encerra o processo para adquirir novamente a exclusividade no reinício.
 
