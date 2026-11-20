@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, cast
 
 import boto3  # pyright: ignore[reportMissingTypeStubs]
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from api.storage.contracts import ObjectRef
@@ -41,6 +42,7 @@ class S3Archive:
         region: str = "us-east-1",
         access_key: str | None = None,
         secret_key: str | None = None,
+        config: Config | None = None,
     ):
         self.bucket = bucket
         self.relocations: dict[str, ObjectRef] = {}
@@ -50,6 +52,7 @@ class S3Archive:
             region_name=region,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
+            config=config,
         )
 
     def initialize(self) -> None:
@@ -158,7 +161,9 @@ class S3Archive:
             self.verify(reference)
             return reference
 
-    def download(self, reference: ObjectRef, destination: Path) -> None:
+    def download(
+        self, reference: ObjectRef, destination: Path, *, max_bytes: int | None = None
+    ) -> None:
         physical = self.relocations.get(self.identity(reference), reference)
         if (
             physical.bucket != self.bucket
@@ -170,9 +175,13 @@ class S3Archive:
         if physical.version_id:
             options["VersionId"] = physical.version_id
         response = self.client.get_object(**options)
+        downloaded = 0
         try:
             with destination.open("xb") as output:
                 while block := response["Body"].read(CHUNK):
+                    downloaded += len(block)
+                    if max_bytes is not None and downloaded > max_bytes:
+                        raise ValueError("archive_too_large")
                     output.write(block)
         finally:
             response["Body"].close()

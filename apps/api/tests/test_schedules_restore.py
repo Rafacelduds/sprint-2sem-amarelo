@@ -9,6 +9,7 @@ from api.gtfs.catalog import Catalog
 from api.gtfs.models import GtfsVersion
 from api.gtfs.source import inspect_feed
 from api.gtfs.storage import S3Archive as GtfsArchive
+from api.network_gtfs import FeedReference, load_feed
 from api.schedules.catalog import resolve_feed
 from api.storage.__main__ import archive_from_settings
 from api.storage.contracts import ObjectRef
@@ -20,7 +21,10 @@ from test_storage import archive as archive  # noqa: F401
 
 
 async def test_gtfs_catalog_uses_restored_map_and_verifies_download(
-    sessions: async_sessionmaker[AsyncSession], archive: S3Archive, tmp_path: Path
+    sessions: async_sessionmaker[AsyncSession],
+    archive: S3Archive,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     path = feed(tmp_path / "feed.zip", daily=True)
     metadata = inspect_feed(path)
@@ -52,19 +56,30 @@ async def test_gtfs_catalog_uses_restored_map_and_verifies_download(
         ),
         encoding="utf-8",
     )
-    restored = archive_from_settings(
-        Settings(
-            s3_bucket=recovered.bucket,
-            s3_endpoint_url=archive.client.meta.endpoint_url,
-            s3_access_key="test",
-            s3_secret_key="test",
-            s3_restore_map=map_path,
-        )
+    settings = Settings(
+        s3_bucket=recovered.bucket,
+        s3_endpoint_url=archive.client.meta.endpoint_url,
+        s3_access_key="test",
+        s3_secret_key="test",
+        s3_restore_map=map_path,
+        network_cache_dir=tmp_path / "network-cache",
     )
+    restored = archive_from_settings(settings)
     with patch.object(restored.client, "get_object", wraps=restored.client.get_object) as get:
         async with sessions() as session:
             result = await resolve_feed(session, restored, "test-us04", date.today(), tmp_path)
         assert result is not None and result.read_bytes() == path.read_bytes()
+        assert get.call_args.kwargs["Bucket"] == recovered.bucket
+        assert get.call_args.kwargs["VersionId"] == physical.version_id
+    # O leitor US22 precisa da mesma resolução quando não existe cache local.
+    monkeypatch.setattr("api.network_gtfs.get_settings", lambda: settings)
+    with patch.object(restored.client, "get_object", wraps=restored.client.get_object) as get:
+        monkeypatch.setattr("api.network_gtfs.archive_from_settings", Mock(return_value=restored))
+        load_feed(
+            FeedReference(
+                metadata.sha256, datetime.now(UTC), "synthetic", original.bucket, key, metadata.size
+            )
+        )
         assert get.call_args.kwargs["Bucket"] == recovered.bucket
         assert get.call_args.kwargs["VersionId"] == physical.version_id
     # Corrupção dos bytes no destino não pode ser aceita apenas pelo mapa/metadados.

@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
 
+from botocore.config import Config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -18,13 +19,14 @@ from api.storage.service import ArchiveService, exclusive
 logger = logging.getLogger(__name__)
 
 
-def archive_from_settings(settings: Settings) -> S3Archive:
+def archive_from_settings(settings: Settings, *, config: Config | None = None) -> S3Archive:
     archive = S3Archive(
         settings.s3_bucket,
         endpoint=settings.s3_endpoint_url,
         region=settings.s3_region,
         access_key=settings.s3_access_key or None,
         secret_key=settings.s3_secret_key or None,
+        config=config,
     )
     if settings.s3_restore_map:
         contents = json.loads(settings.s3_restore_map.read_text(encoding="utf-8"))

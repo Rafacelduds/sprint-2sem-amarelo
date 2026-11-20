@@ -6,8 +6,9 @@ Implementação da [US01](https://trello.com/c/MuuQFXEX) e da [US29](https://tre
 
 Mantenha `apps/api/.env` privado, organizado como `apps/api/.env.example`.
 Use os dois `--env-file` do README nos comandos Compose. O coletor aceita
-`CHAVE_API_OLHO_VIVO` e o nome anterior `OLHOVIVO_TOKEN`; se ambos existirem,
-`CHAVE_API_OLHO_VIVO` tem precedência. Nunca use `VITE_*` para credenciais.
+`CHAVE_API_OLHO_VIVO`, `OLHOVIVO_TOKEN` e `OLHO_VIVO_TOKEN`, nessa ordem de
+precedência, compartilhada com o mapa. Valores vazios são ignorados; configure
+apenas um dos nomes. Nunca use `VITE_*` para credenciais.
 
 | Variável | Uso |
 | --- | --- |

@@ -15,17 +15,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from time import monotonic
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
-import boto3
 from botocore.config import Config
 from sqlalchemy import select
 
 from api.config import get_settings
 from api.gtfs.models import GtfsCapture, GtfsVersion
-
-if TYPE_CHECKING:
-    from mypy_boto3_s3 import S3Client
+from api.gtfs.references import resolve_object
+from api.storage.__main__ import archive_from_settings
 
 
 @dataclass(frozen=True)
@@ -192,41 +190,30 @@ def build_shapes(archive: zipfile.ZipFile, database: Path) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def archive_client() -> "S3Client":
-    s = get_settings()
-    return boto3.client(  # pyright: ignore[reportUnknownMemberType]
-        "s3",
-        endpoint_url=s.s3_endpoint_url,
-        region_name=s.s3_region,
-        aws_access_key_id=s.s3_access_key,
-        aws_secret_access_key=s.s3_secret_key,
-        config=Config(connect_timeout=5, read_timeout=30, retries={"max_attempts": 1}),
-    )
-
-
 def load_feed(reference: FeedReference) -> Feed:
     directory = get_settings().network_cache_dir.resolve() / reference.version
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "feed.zip"
     if not path.exists() or path.stat().st_size != reference.size:
+        if reference.size > 268_435_456:
+            raise ValueError("archive_too_large")
+        archive = archive_from_settings(
+            get_settings(),
+            config=Config(connect_timeout=5, read_timeout=30, retries={"max_attempts": 1}),
+        )
+        ref = resolve_object(
+            archive,
+            bucket=reference.bucket,
+            key=reference.key,
+            sha256=reference.version,
+            size=reference.size,
+        )
         with NamedTemporaryFile(dir=directory, suffix=".zip", delete=False) as temp:
             temporary = Path(temp.name)
+        # S3Archive.download exige criar o destino com exclusividade.
+        temporary.unlink()
         try:
-            body = archive_client().get_object(Bucket=reference.bucket, Key=reference.key)["Body"]
-            digest = hashlib.sha256()
-            size = 0
-            try:
-                with temporary.open("wb") as output:
-                    for chunk in body.iter_chunks(1024 * 1024):
-                        size += len(chunk)
-                        if size > reference.size or size > 268_435_456:
-                            raise ValueError("archive_too_large")
-                        digest.update(chunk)
-                        output.write(chunk)
-            finally:
-                body.close()
-            if size != reference.size or digest.hexdigest() != reference.version:
-                raise ValueError("archive_hash_mismatch")
+            archive.download(ref, temporary, max_bytes=reference.size)
             temporary.replace(path)
         finally:
             temporary.unlink(missing_ok=True)

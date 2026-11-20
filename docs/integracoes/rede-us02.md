@@ -8,6 +8,12 @@ Sem `NETWORK_CATALOG_PATH`, a API consulta `gtfs_captures` e `gtfs_versions` par
 
 O objeto é lido do S3 configurado, conferido por tamanho e SHA-256 e copiado para um cache descartável em `data/network/{hash}` (`NETWORK_CACHE_DIR` substitui a raiz). `routes.txt` e `trips.txt` formam o catálogo; `shapes.txt` é indexado por leitura sequencial em SQLite, sem materializar todos os pontos em objetos Python. A geometria é consultada apenas para os sentidos solicitados. O ZIP de origem, o catálogo da US02 e suas decisões temporais são preservados. O cache não deve ser versionado.
 
+Após recuperação pela US32, o leitor usa `S3_RESTORE_MAP` para resolver o bucket,
+a chave e a versão física recuperados, inclusive com cache vazio e origem
+inacessível. Mapa e programação oficial compartilham essa resolução. Referências
+divergentes do hash/tamanho catalogados, codificação inesperada e bytes corrompidos
+deixam o catálogo indisponível; o leitor não volta silenciosamente ao bucket antigo.
+
 Se o SHA-256 de um ZIP em cache divergir, o arquivo é fechado antes de ser removido, inclusive no Windows. A tentativa atual informa indisponibilidade e a seguinte volta a ler o objeto da US02; não exige limpeza manual do cache.
 
 A referência é verificada a cada minuto. Ausência de fonte, erro de armazenamento ou hash inválido deixam o catálogo indisponível, sem substituir dados reais por fixtures. A primeira leitura de uma versão inclui a criação do índice; as seguintes reutilizam o cache. A lista de correspondências utiliza os códigos de linha observados no snapshot Olho Vivo, sem baixar outro catálogo externo.
