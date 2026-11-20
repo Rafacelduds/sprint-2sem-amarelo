@@ -9,10 +9,15 @@ Quando a fonte oficial não fornece uma linha/dia, pode usar uma referência
 GTFS da US02. Uma linha usa uma fonte inteira, sem misturar sentidos de fontes
 diferentes. Não altera o contrato HTTP nem o cliente TypeScript.
 
-O aceite exige prioridade da fonte oficial, alternativa GTFS e conferência dos
-totais em 30 linhas. Captura diária ou semanal, política de vigência histórica
-e corte do dia operacional continuam sujeitos ao PO; esta implementação não
-declara esses pontos aprovados e não instala um agendamento.
+O critério documental exige prioridade da fonte oficial, alternativa GTFS e
+conferência dos totais em 30 linhas. Em 20/11/2026, Pedro transmitiu o aceite de
+Victor (PO) para o recorte da US04 com a ressalva das oito linhas divergentes da
+fonte. O aceite não transforma as 22 linhas concordantes em 30 nem altera os
+resultados históricos `acceptance_30_lines=false` e `has_discrepancies=true`.
+Veja a [conferência e a origem do aceite](evidencias/2026-11-19-us04.md).
+Captura diária ou semanal, política de vigência histórica e corte do dia
+operacional continuam sujeitos ao PO; essa resposta não define essas regras e
+a implementação não instala um agendamento.
 
 ## Fonte oficial e execução
 
