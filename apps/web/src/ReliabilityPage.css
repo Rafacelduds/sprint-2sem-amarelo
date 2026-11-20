@@ -1,0 +1,43 @@
+.reliability-page { max-width: 1120px; margin: 0 auto; padding: 44px 28px 72px; }
+.reliability-intro { max-width: 740px; margin-bottom: 26px; }
+.reliability-eyebrow { color: #597469; font-size: 11px; font-weight: 700; letter-spacing: 1.6px; }
+.reliability-intro h1 { font-size: clamp(26px, 4vw, 36px); margin: 10px 0; }
+.reliability-page p, .reliability-page li { line-height: 1.7; font-size: 14px; }
+.reliability-intro p, .reliability-help { color: #53695e; }
+.reliability-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; padding: 22px; background: #fff; border: 1px solid #d9e3dc; border-radius: 10px; }
+.reliability-filters label { display: grid; gap: 8px; font-size: 13px; font-weight: 650; }
+.reliability-filters input { min-height: 42px; padding: 8px 12px; border: 1px solid #b9c9c0; border-radius: 6px; font: inherit; color: #203f33; background: white; }
+.reliability-filters input:focus-visible { outline: 3px solid #c79914; outline-offset: 3px; }
+.reliability-filters button { min-height: 42px; background: #1e5a43; color: white; border-color: #1e5a43; }
+.reliability-filters button:disabled { opacity: .6; cursor: default; }
+.reliability-filters p { width: 100%; margin: 0; font-size: 12px; color: #53695e; }
+.reliability-report { margin-top: 28px; }
+.reliability-report-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 12px; }
+.reliability-report-heading h2 { margin-bottom: 6px; }
+.reliability-badge { background: #e4eee7; color: #285b45; padding: 8px 12px; border-radius: 6px; font-size: 12px; }
+.reliability-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0 14px; }
+.reliability-metrics > div { padding: 20px 16px; border: 1px solid #d9e3dc; border-radius: 9px; background: #fff; min-width: 0; }
+.reliability-metrics dt { font-size: 12px; color: #53695e; }
+.reliability-metrics dd { font-size: 23px; font-weight: 700; margin: 12px 0 0; overflow-wrap: anywhere; }
+.reliability-section { margin-top: 28px; background: #fff; border: 1px solid #d9e3dc; border-radius: 10px; padding: 24px; min-width: 0; }
+.reliability-section h2 { font-size: 20px; margin-bottom: 12px; }
+.reliability-section h3 { font-size: 16px; margin-top: 24px; }
+.reliability-table-scroll { overflow-x: auto; }
+.reliability-section table { border-collapse: collapse; width: 100%; text-align: left; font-size: 13px; min-width: 560px; }
+.reliability-section td, .reliability-section th { padding: 14px 12px; vertical-align: top; border-bottom: 1px solid #e0e9e2; line-height: 1.6; }
+.reliability-section th { color: #52695d; background: #f3f7f4; }
+.reliability-notice { padding: 22px; background: #fff8e7; border: 1px solid #e4d2a3; border-radius: 10px; margin: 24px 0; }
+.reliability-notice h2 { font-size: 18px; }
+.reliability-notice p:last-child { margin-bottom: 0; }
+.reliability-reference-list { list-style: none; padding: 0; }
+.reliability-reference-list li, .reliability-reference { border-left: 3px solid #a7c3af; padding: 10px 16px; margin: 12px 0; background: #f5f8f6; }
+.reliability-reference-list span, .reliability-reference-list strong { display: block; }
+.reliability-page code { overflow-wrap: anywhere; font-size: 12px; }
+.reliability-reference code, .reliability-reference-list code { display: block; margin: 8px 0; }
+@media (max-width: 700px) {
+  .reliability-page { padding: 28px 16px 48px; }
+  .reliability-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reliability-section { padding: 18px; }
+  .reliability-filters label, .reliability-filters button { width: 100%; }
+  .reliability-filters input { width: 100%; min-width: 0; }
+}

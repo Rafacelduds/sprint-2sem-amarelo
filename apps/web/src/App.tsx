@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import MapPage from "./MapPage";
 import DocumentsPage from "./DocumentsPage";
+import ReliabilityPage from "./ReliabilityPage";
 import "./Navigation.css";
 
 function subscribe(listener: () => void) {
@@ -10,10 +11,11 @@ function subscribe(listener: () => void) {
 
 export default function App() {
   const page = useSyncExternalStore(subscribe, () =>
-    window.location.hash === "#acervo" ? "documents" : "map",
+    window.location.hash === "#confiabilidade" ? "reliability"
+      : window.location.hash === "#acervo" ? "documents" : "map",
   );
   useEffect(() => {
-    document.title = `ObservaÔnibus — ${page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
+    document.title = `ObservaÔnibus — ${page === "reliability" ? "Confiabilidade da coleta" : page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
   }, [page]);
   return (
     <>
@@ -31,9 +33,12 @@ export default function App() {
           >
             Acervo documental
           </a>
+          <a href="#confiabilidade" aria-current={page === "reliability" ? "page" : undefined}>
+            Confiabilidade
+          </a>
         </div>
       </nav>
-      {page === "documents" ? <DocumentsPage /> : <MapPage />}
+      {page === "reliability" ? <ReliabilityPage /> : page === "documents" ? <DocumentsPage /> : <MapPage />}
     </>
   );
 }
