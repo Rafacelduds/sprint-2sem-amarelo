@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -8,10 +9,18 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import aliased
 
+from api.collection.diagnostics import CycleDiagnostics
 from api.collection.models import CollectionCycle, CollectionSnapshot, VehiclePosition
 from api.collection.source import Snapshot
 from api.gtfs.catalog import resolve_version
+
+
+@dataclass
+class RecoveryNotice:
+    outage: CollectionCycle
+    recovered_at: datetime
 
 
 @asynccontextmanager
@@ -39,8 +48,8 @@ class PostgresStore:
         self.gtfs_source_id = gtfs_source_id
         self.interval_seconds = interval_seconds
 
-    async def start(self, scheduled_at: datetime) -> UUID:
-        cycle_id = uuid4()
+    async def start(self, scheduled_at: datetime, *, cycle_id: UUID | None = None) -> UUID:
+        cycle_id = cycle_id or uuid4()
         async with self.sessions.begin() as session:
             session.add(
                 CollectionCycle(
@@ -152,4 +161,66 @@ class PostgresStore:
                 update(CollectionCycle)
                 .where(CollectionCycle.id == cycle_id)
                 .values(alerted_at=when)
+            )
+
+    async def record_diagnostics(self, cycle_id: UUID, details: CycleDiagnostics) -> None:
+        async with self.sessions.begin() as session:
+            await session.execute(
+                update(CollectionCycle)
+                .where(CollectionCycle.id == cycle_id)
+                .values(diagnostics=details.model_dump(mode="json"))
+            )
+
+    async def latest_failure(self, since: datetime) -> CollectionCycle | None:
+        async with self.sessions() as session:
+            return await session.scalar(
+                select(CollectionCycle)
+                .where(
+                    CollectionCycle.scheduled_at >= since,
+                    CollectionCycle.status.in_(
+                        ["origin_failure", "storage_failure", "interrupted"]
+                    ),
+                )
+                .order_by(CollectionCycle.scheduled_at.desc())
+                .limit(1)
+            )
+
+    async def pending_recovery(self) -> RecoveryNotice | None:
+        success = aliased(CollectionCycle)
+        recovered_at = (
+            select(func.min(success.finished_at))
+            .where(
+                success.status == "success",
+                success.scheduled_at > CollectionCycle.scheduled_at,
+            )
+            .correlate(CollectionCycle)
+            .scalar_subquery()
+        )
+        async with self.sessions() as session:
+            outage = await session.scalar(
+                select(CollectionCycle)
+                .where(
+                    CollectionCycle.alerted_at.is_not(None),
+                    CollectionCycle.recovery_alerted_at.is_(None),
+                    recovered_at.is_not(None),
+                )
+                .order_by(CollectionCycle.scheduled_at)
+                .limit(1)
+            )
+            if outage is None:
+                return None
+            when = await session.scalar(
+                select(func.min(CollectionCycle.finished_at)).where(
+                    CollectionCycle.status == "success",
+                    CollectionCycle.scheduled_at > outage.scheduled_at,
+                )
+            )
+            return None if when is None else RecoveryNotice(outage, when)
+
+    async def mark_recovery_alerted(self, cycle_id: UUID, when: datetime) -> None:
+        async with self.sessions.begin() as session:
+            await session.execute(
+                update(CollectionCycle)
+                .where(CollectionCycle.id == cycle_id)
+                .values(recovery_alerted_at=when)
             )

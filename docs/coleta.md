@@ -42,7 +42,7 @@ O coletor usa a imagem Python da API, mas é outro processo. No Compose, aguarda
 
 | Tabela | Conteúdo |
 | --- | --- |
-| `collection_cycles` | Instante agendado, término, alerta entregue e resultado: `running`, `success`, `origin_failure`, `storage_failure` ou `interrupted` |
+| `collection_cycles` | Instante agendado, término, diagnóstico do ciclo, entregas de falha/recuperação e resultado: `running`, `success`, `origin_failure`, `storage_failure` ou `interrupted` |
 | `collection_snapshots` | Inbox operacional: bytes exatos da resposta de posições, instante UTC de recebimento, endpoint, empresa e ciclo |
 | `vehicle_positions` | Posições normalizadas com vínculo à resposta e horário de coleta; campos ausentes ficam nulos |
 
@@ -68,7 +68,15 @@ A consulta de posições em operação independe da descoberta de empresas: se `
 
 Falhas são registradas separando origem e armazenamento. Ciclos incompletos representam lacunas de cobertura, mesmo quando parte das posições foi coletada; os erros identificam as consultas pendentes. No reinício, ciclos deixados `running` viram `interrupted`. Nenhuma posição é criada para preencher lacunas ou recuperar um instante que já passou. O próximo ciclo retoma consultas atuais automaticamente. Se o banco fica inacessível, há log local; no mesmo processo, o intervalo conhecido é registrado quando ele volta. Sem banco e sem processo ativo não é possível reconstruir a extensão exata da indisponibilidade: isso exige supervisão externa (US30).
 
-O início da falha contínua é o primeiro ciclo incompleto desde o último sucesso integral, consultado no banco para sobreviver a reinícios. Após pelo menos 600 segundos, a verificação ao término do ciclo emite um alerta local e tenta o webhook, se configurado. O evento contém `event=collection_outage`, `cycle_id`, `started_at` em UTC e `text`. O receptor deve aceitar um POST JSON e devolver 2xx; integrações de canais com outro formato precisam de adaptação. A verificação pode ocorrer até um ciclo após atingir o limiar.
+O início da falha contínua é o primeiro ciclo incompleto desde o último sucesso integral, consultado no banco para sobreviver a reinícios. Após pelo menos 600 segundos, a verificação ao término do ciclo emite um alerta local e tenta o webhook, se configurado. No formato genérico, o evento contém `event=collection_outage`, `cycle_id`, `started_at` em UTC, `text` e, quando disponível, `diagnostics`. A verificação pode ocorrer até um ciclo após atingir o limiar.
+
+O diagnóstico usa o último ciclo incompleto: informa quais consultas falharam, se a resposta de operação foi gravada, quantas respostas de garagens foram preservadas e quantas rodadas de consulta/retentativa realmente ocorreram. A mensagem limita os exemplos de consultas com falha e não inclui respostas brutas, URLs ou credenciais. Se a informação não estiver disponível, apresenta isso explicitamente em vez de assumir perda total ou contagem zero. Os códigos detalhados continuam nos registros operacionais.
+
+O alerta sugere uma ação conforme a causa: acompanhar erros de servidor da origem, conferir token/permissões em falhas de autenticação ou verificar conexão, permissões e espaço do banco em falhas de persistência. As retentativas e a reautenticação existentes continuam automáticas; não há reinício indiscriminado para tentar corrigir um HTTP 500 da SPTrans.
+
+**Recuperação:** depois de um ciclo integralmente bem-sucedido, uma ocorrência cujo alerta de falha teve entrega confirmada fica elegível para `event=collection_recovered`, com `cycle_id`, `started_at`, `recovered_at` e `text`. A mensagem inclui a duração e esclarece que as lacunas passadas não foram preenchidas. A confirmação fica em `recovery_alerted_at`; uma falha de envio permanece pendente no banco e é retentada, no máximo uma vez por minuto, inclusive após reinício. Não se envia recuperação para incidentes nunca notificados, nem enquanto houver outra ocorrência ativa, para evitar indicar saúde durante uma nova falha. Pode haver duplicação se o processo cair entre enviar e gravar a confirmação, como no alerta inicial.
+
+Quando o banco está inacessível, o processo mantém a ocorrência e a confirmação do alerta em memória e as registra quando a persistência volta, preservando o identificador para correlacionar a recuperação. Se o processo morrer antes desse registro, esse estado em memória é perdido: supervisão externa continua necessária. Aplique as migrações do README antes de iniciar a nova versão; a revisão `20261120_0009` acrescenta diagnóstico e confirmação de recuperação sem alterar posições existentes.
 
 Só uma resposta HTTP bem-sucedida marca `alerted_at`. Falha ou ausência de destino mantém a entrega pendente, com nova tentativa no máximo uma vez por minuto. Após entrega, não repete o alerta da mesma falha contínua; se o processo cair entre envio e confirmação, pode haver repetição — o receptor genérico pode deduplicar por `cycle_id`. Não coloque sua URL privada no Trello ou no Git. Em 19/11/2026, Victor solicitou integrar o destino Discord; configuração e teste real devem ser conferidos antes de declarar entrega no canal.
 
@@ -81,7 +89,7 @@ COLLECTION_ALERT_WEBHOOK=https://discord.com/api/webhooks/SEU_ID/SEU_TOKEN
 COLLECTION_ALERT_FORMAT=discord
 ```
 
-Use a URL copiada, sem acrescentar `/github`. O modo Discord envia `content` com início da ocorrência no fuso de São Paulo e identificador do ciclo, além de `allowed_mentions` vazio para não disparar menções. Solicita `wait=true` e só confirma entrega com HTTP 200 e identificador da mensagem retornado. Respostas inválidas, erros HTTP e timeout não confirmam entrega. Em HTTP 429, respeita `retry_after` antes de tentar enviar novamente, sem bloquear a coleta; se o corpo de limitação vier inválido, aguarda pelo menos um minuto. Não há alerta de recuperação neste recorte.
+Use a URL copiada, sem acrescentar `/github`. O modo Discord envia cartões visuais (`embeds`): vermelho para falha, verde para recuperação e amarelo para teste simples. Causa, coleta preservada, tentativas e ação sugerida ficam em campos separados; início, duração e identificador da ocorrência facilitam a leitura e a correlação. Os horários são de São Paulo. `allowed_mentions` vazio evita menções automáticas. Solicita `wait=true` e só confirma entrega com HTTP 200 e identificador da mensagem retornado. Respostas inválidas, erros HTTP e timeout não confirmam entrega. Em HTTP 429, respeita `retry_after` antes de tentar enviar novamente, sem bloquear a coleta; se o corpo de limitação vier inválido, aguarda pelo menos um minuto.
 
 Para validar uma única mensagem claramente identificada como **TESTE**, execute na raiz, depois de combinar o envio com quem acompanha o canal:
 
@@ -91,13 +99,25 @@ uv run --package amarelo-api python -m api.collection --test-alert
 
 No PowerShell, com a venv já instalada, também pode usar `.\.venv\Scripts\python.exe -m api.collection --test-alert`. Esse modo não inicia a coleta, não precisa do token Olho Vivo, não acessa o banco e não altera o estado dos alertas reais. Código de saída 0 significa envio confirmado; 1 indica falha ou ausência de configuração. Confirme visualmente a mensagem no canal. Evite chamar esse comando repetidamente: cada execução envia um teste novo.
 
+Para testar a apresentação de **cada tipo**, na raiz do repositório, use os comandos abaixo no PowerShell. Cada comando envia exatamente uma mensagem, explicitamente marcada como **SIMULAÇÃO**, com dados fictícios e sem alterar estados reais:
+
+```powershell
+# Falha parcial: operação preservada, três consultas de garagem com HTTP 500.
+.\.venv\Scripts\python.exe -m api.collection --test-failure-alert
+
+# Recuperação: exemplo de um ciclo completo após uma ocorrência de 12 minutos.
+.\.venv\Scripts\python.exe -m api.collection --test-recovery-alert
+```
+
+Também é possível usar `uv run --package amarelo-api python -m api.collection` com essas mesmas flags. Elas não consultam SPTrans nem o banco e não aguardam dez minutos: só validam o envio e a apresentação, não simulam uma falha real do coletor. Cada execução gera seu próprio identificador de demonstração.
+
 Após alterar o `.env`, reinicie o processo do coletor. No Compose, recrie o serviço para carregar as variáveis:
 
 ```bash
 docker compose --env-file apps/api/.env --env-file apps/web/.env --profile coleta up -d --build collector
 ```
 
-O modo `generic` continua enviando o contrato JSON descrito acima, sem alterações para integrações existentes. A URL é uma credencial; quem a possui pode publicar no canal. Não a exponha em prints, commits ou logs.
+O modo `generic` preserva os campos originais do alerta de falha, acrescenta diagnóstico opcional e passa a emitir também o evento de recuperação descrito acima. A URL é uma credencial; quem a possui pode publicar no canal. Não a exponha em prints, commits ou logs.
 
 Referências: [criar webhook no Discord](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) e [contrato de execução](https://docs.discord.com/developers/resources/webhook#execute-webhook), consultados em 19/11/2026.
 

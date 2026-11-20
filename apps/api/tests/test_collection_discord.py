@@ -7,6 +7,7 @@ import httpx
 import pytest
 from api.collection import __main__ as cli
 from api.collection.alerts import WebhookAlert
+from api.collection.diagnostics import CycleDiagnostics
 from api.collection.runner import Collector
 from api.collection.source import OlhoVivo
 from api.collection.store import PostgresStore
@@ -51,11 +52,44 @@ async def test_discord_content_time_mentions_and_confirmation(receiver: Receiver
     assert request.url.params["wait"] == "true"
     assert request.url.params["thread_id"] == "456"
     payload = json.loads(request.content)
-    assert "19/11/2026 12:00:00 (São Paulo)" in payload["content"]
-    assert str(CYCLE) in payload["content"]
-    assert "dez minutos" in payload["content"]
+    embed = payload["embeds"][0]
+    assert embed["fields"][0]["value"] == "19/11/2026 12:00:00"
+    assert str(CYCLE) in embed["footer"]["text"]
+    assert "dez minutos" in embed["description"]
+    assert embed["color"] == 0xED4245
     assert payload["allowed_mentions"] == {"parse": []}
     assert "private-token" not in request.content.decode()
+
+
+@pytest.mark.asyncio
+async def test_rich_failure_and_recovery_are_readable_and_bounded(receiver: Receiver) -> None:
+    from datetime import timedelta
+
+    alert = WebhookAlert(SecretStr(WEBHOOK), "discord")
+    details = CycleDiagnostics(
+        status="origin_failure",
+        rounds=6,
+        road_saved=True,
+        garages_saved=8,
+        companies_discovered=True,
+        failures={"company_600": "/Posicao/Garagem:http_500"},
+    )
+    recovered = START + timedelta(minutes=12)
+    assert await alert.send(CYCLE, START, diagnostics=details, observed_at=recovered)
+    failure = json.loads(receiver.requests[-1].content)
+    assert "HTTP 500" in str(failure) and "600" in str(failure)
+    assert "resposta gravada" in str(failure) and "retentativa" in str(failure)
+    assert "12 min" in str(failure)
+    assert await alert.send_recovery(CYCLE, START, recovered)
+    recovery = json.loads(receiver.requests[-1].content)
+    assert recovery["embeds"][0]["color"] == 0x57F287
+    assert str(CYCLE) in recovery["embeds"][0]["footer"]["text"]
+    assert "lacunas" in recovery["embeds"][0]["description"]
+    for payload in (failure, recovery):
+        embed = payload["embeds"][0]
+        assert len(embed["title"]) <= 256 and len(embed["fields"]) <= 25
+        assert all(len(f["value"]) <= 1024 for f in embed["fields"])
+        assert payload["allowed_mentions"] == {"parse": []}
 
 
 @pytest.mark.parametrize(
@@ -126,12 +160,14 @@ def test_format_is_explicit_and_defaults_to_generic() -> None:
     assert collector.alert.webhook_format == "discord"
 
 
+@pytest.mark.parametrize("flag", ["--test-alert", "--test-failure-alert", "--test-recovery-alert"])
 @pytest.mark.asyncio
 async def test_cli_sends_labeled_test_without_database_or_sptrans(
     receiver: Receiver,
     monkeypatch: pytest.MonkeyPatch,
+    flag: str,
 ) -> None:
-    monkeypatch.setattr("sys.argv", ["collection", "--test-alert"])
+    monkeypatch.setattr("sys.argv", ["collection", flag])
     monkeypatch.setattr(
         cli,
         "CollectionSettings",
@@ -146,8 +182,16 @@ async def test_cli_sends_labeled_test_without_database_or_sptrans(
     monkeypatch.setattr(cli, "create_async_engine", no_database)
     await cli.main()
     assert len(receiver.requests) == 1
-    assert "TESTE" in json.loads(receiver.requests[0].content)["content"]
-    assert "Não indica uma falha real" in json.loads(receiver.requests[0].content)["content"]
+    embed = json.loads(receiver.requests[0].content)["embeds"][0]
+    assert "TESTE" in embed["description"] or "SIMULAÇÃO" in embed["description"]
+    assert "real" in embed["description"]
+    assert embed["color"] == (
+        0x57F287
+        if flag == "--test-recovery-alert"
+        else 0xFEE75C
+        if flag == "--test-alert"
+        else 0xED4245
+    )
 
 
 @pytest.mark.asyncio

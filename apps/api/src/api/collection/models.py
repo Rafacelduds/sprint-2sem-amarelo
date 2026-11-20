@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, LargeBinary, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, LargeBinary, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from api.db.base import Base
@@ -18,6 +18,8 @@ class CollectionCycle(Base):
     status: Mapped[str]
     error_code: Mapped[str | None]
     alerted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    diagnostics: Mapped[dict[str, object] | None] = mapped_column(JSON)
+    recovery_alerted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class CollectionSnapshot(Base):

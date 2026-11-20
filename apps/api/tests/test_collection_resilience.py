@@ -1,7 +1,7 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock
-from uuid import UUID, uuid4
+from unittest.mock import ANY, AsyncMock
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -34,6 +34,8 @@ def fake_store() -> AsyncMock:
     store = AsyncMock(spec=PostgresStore)
     store.start.return_value = uuid4()
     store.outage.return_value = None
+    store.latest_failure.return_value = None
+    store.pending_recovery.return_value = None
     return store
 
 
@@ -72,6 +74,7 @@ async def test_persistent_finish_failure_triggers_storage_alert_and_throttles(
     source.company_codes.return_value = [1]
     store.finish.side_effect = error
     alert = AsyncMock(spec=WebhookAlert)
+    alert.send.return_value = False
     collector = Collector(source, store, IsolatedSettings(), clock=clock, alert=alert)
     started = clock.now()
     assert not await collector.cycle(clock.now())
@@ -80,7 +83,9 @@ async def test_persistent_finish_failure_triggers_storage_alert_and_throttles(
     alert.send.assert_not_awaited()
     clock.seconds = 601
     assert not await collector.cycle(clock.now())
-    alert.send.assert_awaited_once_with(UUID(int=0), started)
+    alert.send.assert_awaited_once_with(
+        collector.storage_incident_id, started, diagnostics=ANY, observed_at=clock.now()
+    )
     assert not await collector.cycle(clock.now())
     assert alert.send.await_count == 1
     clock.seconds = 661
@@ -194,7 +199,9 @@ async def test_alert_after_ten_minutes_is_confirmed_and_throttled() -> None:
     alert.send.assert_not_awaited()
     clock.seconds = 600
     await collector.notify_outage()
-    alert.send.assert_awaited_once_with(outage.id, outage.scheduled_at)
+    alert.send.assert_awaited_once_with(
+        outage.id, outage.scheduled_at, diagnostics=None, observed_at=clock.now()
+    )
     store.mark_alerted.assert_awaited_once_with(outage.id, clock.now())
     await collector.notify_outage()
     assert alert.send.await_count == 1

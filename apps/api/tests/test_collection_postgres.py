@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from api.collection.diagnostics import CycleDiagnostics
 from api.collection.models import CollectionCycle, CollectionSnapshot, VehiclePosition
 from api.collection.store import PostgresStore, single_collector
 from api.db.base import Base
@@ -123,3 +124,48 @@ async def test_only_one_collector_can_hold_database_lock() -> None:
             pass  # lock liberado após saída do primeiro processo
     finally:
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_recovery_stays_pending_across_restart_until_delivery_confirmed(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    store = PostgresStore(sessions)
+    started = datetime.now(UTC) - timedelta(minutes=12)
+    outage_id = await store.start(started)
+    details = CycleDiagnostics(
+        status="origin_failure",
+        rounds=6,
+        road_saved=True,
+        garages_saved=8,
+        companies_discovered=True,
+        failures={"company_600": "http_500"},
+    )
+    await store.record_diagnostics(outage_id, details)
+    await store.finish(outage_id, "origin_failure", "http_500")
+    await store.mark_alerted(outage_id, started + timedelta(minutes=10))
+    assert await store.pending_recovery() is None
+    partial = await store.start(started + timedelta(minutes=11))
+    await store.finish(partial, "origin_failure", "still_partial")
+    assert await store.pending_recovery() is None
+    success = await store.start(datetime.now(UTC))
+    await store.finish(success, "success")
+    restarted = PostgresStore(sessions)
+    notice = await restarted.pending_recovery()
+    assert notice is not None and notice.outage.id == outage_id
+    assert notice.outage.diagnostics == details.model_dump()
+    assert (await PostgresStore(sessions).pending_recovery()) is not None
+    await restarted.mark_recovery_alerted(outage_id, datetime.now(UTC))
+    assert await PostgresStore(sessions).pending_recovery() is None
+
+
+@pytest.mark.asyncio
+async def test_no_recovery_for_outage_that_never_delivered_an_alert(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    store = PostgresStore(sessions)
+    outage_id = await store.start(datetime.now(UTC) - timedelta(minutes=12))
+    await store.finish(outage_id, "origin_failure")
+    success = await store.start(datetime.now(UTC))
+    await store.finish(success, "success")
+    assert await store.pending_recovery() is None
