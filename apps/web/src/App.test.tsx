@@ -190,6 +190,44 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe("Rede pública", () => {
+  it("shows complete GTFS provenance with an explicit timezone", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
+      new Response(JSON.stringify(String(url).includes("/network/catalog")
+        ? { ...network, source: "https://example.org/gtfs.zip",
+            captured_at: "2026-11-20T15:42:17Z" }
+        : snapshot())),
+    );
+    render(<App />);
+    fireEvent.click(screen.getByText("Legenda e fontes"));
+    expect(await screen.findByText(network.version)).toBeVisible();
+    expect(screen.getByText(/Fonte GTFS:/)).toHaveTextContent("https://example.org/gtfs.zip");
+    expect(screen.getByText(/Fonte GTFS:/)).toHaveTextContent("20/11/2026, 12:42:17");
+    expect(screen.getByText(/Fonte GTFS:/)).toHaveTextContent("America/Sao_Paulo");
+  });
+
+  it("removes GTFS associations after a catalog request fails, keeping positions", async () => {
+    let failing = false;
+    const intervals = vi.spyOn(globalThis, "setInterval");
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (String(url).includes("/network/catalog")) {
+        return failing ? new Response("", { status: 503 })
+          : new Response(JSON.stringify(network));
+      }
+      return new Response(JSON.stringify(snapshot()));
+    });
+    render(<App />);
+    await screen.findByText("Catálogo de demonstração · dados sintéticos");
+    expect(screen.getByTestId("map")).toHaveTextContent("100");
+    failing = true;
+    const refresh = intervals.mock.calls.find(([, delay]) => delay === 60_000)?.[0];
+    expect(typeof refresh).toBe("function");
+    await act(async () => { if (typeof refresh === "function") refresh(); });
+    fireEvent.click(screen.getByText("Legenda e fontes"));
+    expect(screen.getByText(/Referência GTFS indisponível/)).toBeVisible();
+    expect(screen.queryByText(network.version)).not.toBeInTheDocument();
+    expect(screen.getByTestId("map")).toHaveTextContent("100");
+  });
+
   it("preserves loaded routes when area filters keep the same effective IDs", async () => {
     const fetch = respondWithRoutes();
     render(<App />);
