@@ -20,14 +20,21 @@ def isolated_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize("name", TOKEN_NAMES)
+@pytest.mark.parametrize("source", ["environment", "dotenv"])
 def test_map_and_collector_accept_same_token(
-    name: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    name: str, source: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     env = tmp_path / ".env"
-    env.write_text("OLHOVIVO_TOKEN=\nOLHO_VIVO_TOKEN=\n", encoding="utf-8")
+    entries = {alias: "" for alias in TOKEN_NAMES}
+    if source == "dotenv":
+        entries[name] = "synthetic"
+    else:
+        monkeypatch.setenv(name, "synthetic")
+    env.write_text(
+        "\n".join(f"{alias}={value}" for alias, value in entries.items()), encoding="utf-8"
+    )
     monkeypatch.setitem(Settings.model_config, "env_file", env)
     monkeypatch.setitem(CollectionSettings.model_config, "env_file", env)
-    monkeypatch.setenv(name, "synthetic")
     assert Settings().olho_vivo_token.get_secret_value() == "synthetic"
     assert CollectionSettings().olhovivo_token.get_secret_value() == "synthetic"
 
@@ -37,6 +44,18 @@ def test_map_and_collector_use_same_precedence(monkeypatch: pytest.MonkeyPatch) 
         monkeypatch.setenv(name, str(index))
     assert Settings().olho_vivo_token.get_secret_value() == "0"
     assert CollectionSettings().olhovivo_token.get_secret_value() == "0"
+
+
+def test_process_overrides_dotenv_even_with_different_alias(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    env = tmp_path / ".env"
+    env.write_text("CHAVE_API_OLHO_VIVO=from-file\n", encoding="utf-8")
+    monkeypatch.setitem(Settings.model_config, "env_file", env)
+    monkeypatch.setitem(CollectionSettings.model_config, "env_file", env)
+    monkeypatch.setenv("OLHO_VIVO_TOKEN", "from-process")
+    assert Settings().olho_vivo_token.get_secret_value() == "from-process"
+    assert CollectionSettings().olhovivo_token.get_secret_value() == "from-process"
 
 
 @pytest.mark.parametrize("name", TOKEN_NAMES)
