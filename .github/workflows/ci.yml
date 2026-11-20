@@ -68,7 +68,7 @@ jobs:
           python-version: '3.13'
           enable-cache: true
       - run: uv sync --all-packages --all-groups --frozen
-      - run: uv run pytest apps/api/tests/test_network_gtfs.py apps/api/tests/test_network.py apps/api/tests/test_live.py apps/api/tests/test_exports_volume.py
+      - run: uv run pytest apps/api/tests/test_network_gtfs.py apps/api/tests/test_network_restore.py apps/api/tests/test_config.py apps/api/tests/test_network.py apps/api/tests/test_live.py apps/api/tests/test_exports_volume.py
 
   frontend:
     runs-on: ubuntu-latest
