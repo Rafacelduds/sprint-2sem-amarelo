@@ -127,6 +127,7 @@ services:
       GTFS_SOURCE_ID: ${GTFS_SOURCE_ID:-sptrans}
       COLLECTION_TIMEOUT_SECONDS: ${COLLECTION_TIMEOUT_SECONDS:-5}
       COLLECTION_ALERT_WEBHOOK: ${COLLECTION_ALERT_WEBHOOK:-}
+      COLLECTION_ALERT_FORMAT: ${COLLECTION_ALERT_FORMAT:-generic}
     depends_on:
       api:
         condition: service_healthy

@@ -3,7 +3,8 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from uuid import UUID
+from typing import Literal
+from uuid import UUID, uuid4
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,8 +12,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from api.collection.alerts import WebhookAlert
+from api.collection.diagnostics import CycleDiagnostics
+from api.collection.models import CollectionCycle
 from api.collection.source import OlhoVivo, SourceError
-from api.collection.store import PostgresStore
+from api.collection.store import PostgresStore, RecoveryNotice
 from api.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -34,6 +37,7 @@ class CollectionSettings(BaseSettings):
     collection_max_retries: int = Field(default=5, ge=0, le=5)
     collection_cycle_budget_seconds: float = Field(default=50, gt=0, le=50)
     collection_alert_webhook: SecretStr | None = None
+    collection_alert_format: Literal["generic", "discord"] = "generic"
     database_url: SecretStr = SecretStr(
         "postgresql+asyncpg://amarelo:amarelo@localhost:5432/amarelo"
     )
@@ -72,6 +76,8 @@ class Batch:
     discovered: bool = False
     errors: dict[str, str] = field(default_factory=lambda: dict[str, str]())
     saving: bool = False
+    rounds: int = 0
+    completed: set[str] = field(default_factory=lambda: set[str]())
 
 
 class Collector:
@@ -89,10 +95,16 @@ class Collector:
         self.store = store
         self.settings = settings
         self.clock = clock or Clock()
-        self.alert = alert or WebhookAlert(settings.collection_alert_webhook)
+        self.alert = alert or WebhookAlert(
+            settings.collection_alert_webhook, settings.collection_alert_format
+        )
         self.guard = guard
         self.last_alert_attempt: float | None = None
         self.storage_down_since: datetime | None = None
+        self.storage_alerted_at: datetime | None = None
+        self.storage_gap_id: UUID | None = None
+        self.storage_incident_id = uuid4()
+        self.last_recovery_attempt: float | None = None
 
     async def attempt(self, cycle_id: UUID, batch: Batch) -> bool:
         queries = tuple(batch.pending)
@@ -131,6 +143,7 @@ class Collector:
             await self.store.save(cycle_id, snapshot)
             batch.saving = False
             batch.pending.remove(code)
+            batch.completed.add(key)
             batch.errors.pop(key, None)
 
     async def cycle(self, scheduled_at: datetime) -> bool:
@@ -147,9 +160,19 @@ class Collector:
         if self.storage_down_since is not None:
             try:
                 async with asyncio.timeout(3):
-                    gap_id = await self.store.start(self.storage_down_since)
-                    await self.store.finish(gap_id, "storage_failure", "database_unavailable")
+                    if self.storage_gap_id is None:
+                        self.storage_gap_id = await self.store.start(
+                            self.storage_down_since, cycle_id=self.storage_incident_id
+                        )
+                    await self.store.finish(
+                        self.storage_gap_id, "storage_failure", "database_unavailable"
+                    )
+                    if self.storage_alerted_at is not None:
+                        await self.store.mark_alerted(self.storage_gap_id, self.storage_alerted_at)
                 self.storage_down_since = None
+                self.storage_gap_id = None
+                self.storage_alerted_at = None
+                self.storage_incident_id = uuid4()
             except Exception:
                 logger.error("collection_storage_gap_pending")
 
@@ -158,6 +181,7 @@ class Collector:
         try:
             async with asyncio.timeout(self.settings.collection_cycle_budget_seconds):
                 for attempt in range(self.settings.collection_max_retries + 1):
+                    batch.rounds = attempt + 1
                     try:
                         if await self.attempt(cycle_id, batch):
                             status, error = "success", ""
@@ -173,11 +197,24 @@ class Collector:
             if batch.saving:
                 status = "storage_failure"
             error = "cycle_deadline"
+            for code in batch.pending:
+                key = "road" if code is None else f"company_{code}"
+                batch.errors.setdefault(key, "cycle_deadline")
         except Exception:
             status, error = "storage_failure", "persistence_failed"
 
         try:
             async with asyncio.timeout(3):
+                details = CycleDiagnostics(
+                    status=status,
+                    rounds=batch.rounds,
+                    road_saved="road" in batch.completed,
+                    garages_saved=sum(key.startswith("company_") for key in batch.completed),
+                    companies_discovered=batch.discovered,
+                    failures=batch.errors.copy(),
+                    error=error or None,
+                )
+                await self.store.record_diagnostics(cycle_id, details)
                 await self.store.finish(cycle_id, status, error or None)
         except Exception:
             logger.error("collection_cycle_finish_failed id=%s", cycle_id)
@@ -189,20 +226,53 @@ class Collector:
         return status == "success"
 
     async def notify_outage(self) -> None:
+        no_active_outage = False
         try:
             async with asyncio.timeout(3):
                 outage = await self.store.outage()
+            no_active_outage = outage is None
             if outage is None or outage.alerted_at is not None:
                 return
             if (self.clock.now() - outage.scheduled_at).total_seconds() < 600:
                 return
             if not self.alert_attempt_due():
                 return
-            if await self.alert.send(outage.id, outage.scheduled_at):
+            async with asyncio.timeout(3):
+                latest = await self.store.latest_failure(outage.scheduled_at)
+            details = None
+            if isinstance(latest, CollectionCycle) and latest.diagnostics is not None:
+                try:
+                    details = CycleDiagnostics.model_validate(latest.diagnostics)
+                except ValueError:
+                    logger.warning("collection_diagnostics_unavailable")
+            if await self.alert.send(
+                outage.id, outage.scheduled_at, diagnostics=details, observed_at=self.clock.now()
+            ):
                 async with asyncio.timeout(3):
                     await self.store.mark_alerted(outage.id, self.clock.now())
         except Exception:
             logger.error("collection_alert_check_failed")
+        finally:
+            if no_active_outage:
+                await self.notify_recovery()
+
+    async def notify_recovery(self) -> None:
+        try:
+            async with asyncio.timeout(3):
+                notice = await self.store.pending_recovery()
+            if not isinstance(notice, RecoveryNotice):
+                return
+            now = self.clock.monotonic()
+            if self.last_recovery_attempt is not None and now - self.last_recovery_attempt < 60:
+                return
+            self.last_recovery_attempt = now
+            if await self.alert.send_recovery(
+                notice.outage.id, notice.outage.scheduled_at, notice.recovered_at
+            ):
+                async with asyncio.timeout(3):
+                    await self.store.mark_recovery_alerted(notice.outage.id, self.clock.now())
+        except Exception:
+            logger.error("collection_recovery_delivery_pending")
 
     def alert_attempt_due(self) -> bool:
         now = self.clock.monotonic()
@@ -212,12 +282,21 @@ class Collector:
         return True
 
     async def alert_storage_outage(self) -> None:
+        if self.storage_alerted_at is not None:
+            return
         if self.storage_down_since is None:
             return
         if (self.clock.now() - self.storage_down_since).total_seconds() >= 600:
             if self.alert_attempt_due():
                 try:
-                    await self.alert.send(UUID(int=0), self.storage_down_since)
+                    sent = await self.alert.send(
+                        self.storage_incident_id,
+                        self.storage_down_since,
+                        diagnostics=CycleDiagnostics(status="storage_failure"),
+                        observed_at=self.clock.now(),
+                    )
+                    if sent:
+                        self.storage_alerted_at = self.clock.now()
                 except Exception:
                     logger.error("collection_storage_alert_failed")
 
