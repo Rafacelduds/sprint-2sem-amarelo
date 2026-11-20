@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from api.collection.alerts import WebhookAlert
 from api.collection.source import OlhoVivo, SourceError
 from api.collection.store import PostgresStore
-from api.config import OLHO_VIVO_TOKEN_ALIASES, Settings
+from api.config import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class CollectionSettings(BaseSettings):
     )
     olhovivo_token: SecretStr = Field(
         default=SecretStr(""),
-        validation_alias=OLHO_VIVO_TOKEN_ALIASES,
+        validation_alias=Settings.model_fields["olho_vivo_token"].validation_alias,
     )
     olhovivo_base_url: str = "https://api.olhovivo.sptrans.com.br/v2.1"
     collection_interval_seconds: int = Field(default=30, ge=15, le=60)
