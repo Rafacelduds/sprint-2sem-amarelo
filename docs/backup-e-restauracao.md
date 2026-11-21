@@ -37,6 +37,67 @@ excluir versões somente em `backups/database/` e `backups/runs/`.
 
 ## Operar
 
+### Painel de operação
+
+A navegação **Backups · equipe** (`#backups`) reutiliza a aplicação que contém os
+[downloads da US09](publicacao-brutos.md). A tela só consulta dados: não executa
+backup, não disponibiliza dumps e não inicia restauração.
+
+Configure uma chave aleatória longa em `OPERATIONS_TOKEN`, somente no ambiente
+privado da API, e reinicie a API. Informe essa chave no formulário do painel.
+Sem configuração, chave incorreta ou ausência de autenticação, a API responde
+401 antes de consultar o banco. Nunca configure essa chave em `VITE_*`, URL,
+Git, imagem ou arquivo público. Fora de localhost, exija HTTPS e restrição de
+rede da operação. Esta solução usa uma chave compartilhada de leitura para o time;
+não implementa contas individuais, auditoria por pessoa ou autenticação corporativa.
+
+A chave permanece apenas em memória na tela. Sair da página, recarregar ou
+**Encerrar acesso** exige informá-la novamente. Não é gravada em cookies,
+localStorage ou sessionStorage. O formulário vazio faz parte da navegação pública;
+as informações operacionais ficam em `GET /operations/backups`, protegido por
+Bearer e com `Cache-Control: no-store`. A resposta usa uma lista explícita de
+campos e não inclui buckets, chaves internas, endpoints, credenciais nem links
+para dumps. O contrato e o cliente TypeScript são gerados normalmente.
+
+Antes de iniciar o job atualizado, aplique as migrações até `20261120_0011`.
+A `20261120_0010` acrescenta `backup_worker` e `backup_attempts`, preservando os
+pontos anteriores; a `20261120_0011` permite desativar o heartbeat sem perder uma
+tentativa reagendada. O downgrade desta última é recusado enquanto houver retry
+pendente numa rotina parada, evitando descartar a agenda silenciosamente. O processo
+`watch` registra heartbeat a cada 30 segundos; a consulta considera o sinal recente
+por até 120 segundos. Parada abrupta pode levar até esse limite para aparecer como
+inativa. Falhas transitórias do heartbeat são tentadas novamente no próximo intervalo,
+sem registrar detalhes privados da exceção. O encerramento normal desativa o sinal
+e preserva o reagendamento. Existência de um
+backup antigo, API respondendo e contagem de objetos não são provas de rotina ativa.
+
+As tentativas de `run` e `watch` são registradas com início, fim, resultado e vínculo
+com o ponto somente depois do retorno do serviço. Falhas persistem sem mensagens
+internas ou argumentos de conexão. Ao obter o lock exclusivo, o job identifica como
+falhas as tentativas que ficaram sem conclusão após uma interrupção. Comandos
+pontuais não anunciam rotina diária ativa. O próximo horário usa o mesmo corte
+das 03:00 UTC do job; falhas do `watch` exibem a próxima tentativa em cinco minutos.
+Sem sinal recente, a tela não promete uma próxima execução.
+
+O reagendamento pendente tem precedência sobre o corte diário: é respeitado mesmo
+quando o ponto foi catalogado antes de uma falha de limpeza/retenção. O reinício
+conserva essa pendência, aguarda seu horário e só a limpa após uma execução completa
+bem-sucedida. Um retry pode criar outro ponto válido no mesmo período. Os testes
+do agendador exercitam falha pós-catálogo, retomada, espera e encerramento normal.
+
+O painel mostra os últimos 20 pontos e tentativas, última consulta, último ponto
+concluído, agenda, atraso, hashes e expiração. Um ponto criado com a nova
+instrumentação pode indicar integridade verificada **na criação**; os registros
+históricos não recebem esse selo retroativamente. Não há verificação remota de
+bytes durante a consulta nem promessa de disponibilidade atual ou restauração
+testada. Uma falha de limpeza/retenção após catalogar um ponto continua sendo
+tentativa malsucedida; o ponto catalogado permanece separado dessa tentativa.
+
+A atualização é manual. Consulta falha, acesso recusado, ausência de pontos,
+tentativa malsucedida e rotina sem sinal são estados distintos. Evidência real,
+incluindo backup do Parquet da US09 e reinício da API, em
+[ensaio do painel](evidencias/2026-11-20-us32-painel.md).
+
 Configure `apps/api/.env` pelo exemplo. Para comandos Python no host use
 `localhost:4566` no S3 principal, `localhost:4567` no backup e o host local no
 `DATABASE_URL`. O código não registra URLs de conexão nem credenciais.

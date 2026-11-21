@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     network_cache_dir: Path = Path(__file__).resolve().parents[4] / "data" / "network"
 
     app_name: str = "Sprint Amarelo API"
+    operations_token: SecretStr = SecretStr("")
     database_url: str = "postgresql+asyncpg://amarelo:amarelo@localhost:5432/amarelo"
     s3_endpoint_url: str | None = None
     s3_access_key: str | None = None

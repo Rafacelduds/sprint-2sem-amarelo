@@ -41,3 +41,19 @@ class BackupReceipt(Base):
     backup_id: Mapped[UUID] = mapped_column(ForeignKey("backup_runs.id"))
     primary_reference: Mapped[dict[str, Any]] = mapped_column(JSONB)
     backup_reference: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class BackupWorker(Base):
+    __tablename__ = "backup_worker"
+    id: Mapped[str] = mapped_column(primary_key=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BackupAttempt(Base):
+    __tablename__ = "backup_attempts"
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str]
+    backup_id: Mapped[UUID | None] = mapped_column(ForeignKey("backup_runs.id"))

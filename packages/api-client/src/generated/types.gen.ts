@@ -23,6 +23,78 @@ export type Area = {
 };
 
 /**
+ * AttemptView
+ */
+export type AttemptView = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Status
+     */
+    status: 'running' | 'success' | 'failed' | 'unknown';
+    /**
+     * Backup Id
+     */
+    backup_id: string | null;
+};
+
+/**
+ * BackupStatus
+ */
+export type BackupStatus = {
+    /**
+     * Checked At
+     */
+    checked_at: string;
+    /**
+     * Worker Active
+     */
+    worker_active: boolean;
+    /**
+     * Heartbeat At
+     */
+    heartbeat_at: string | null;
+    /**
+     * Heartbeat Timeout Seconds
+     */
+    heartbeat_timeout_seconds?: number;
+    /**
+     * Schedule
+     */
+    schedule?: string;
+    /**
+     * Next Execution
+     */
+    next_execution: string | null;
+    /**
+     * Overdue
+     */
+    overdue: boolean;
+    /**
+     * Last Success At
+     */
+    last_success_at: string | null;
+    /**
+     * Attempts
+     */
+    attempts: Array<AttemptView>;
+    /**
+     * Points
+     */
+    points: Array<PointView>;
+};
+
+/**
  * CatalogLine
  */
 export type CatalogLine = {
@@ -438,6 +510,36 @@ export type NetworkLine = {
      * Match Source
      */
     match_source: string;
+};
+
+/**
+ * PointView
+ */
+export type PointView = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Completed At
+     */
+    completed_at: string;
+    /**
+     * Expired At
+     */
+    expired_at: string | null;
+    /**
+     * Manifest Sha256
+     */
+    manifest_sha256: string | null;
+    /**
+     * Dump Sha256
+     */
+    dump_sha256: string | null;
+    /**
+     * Verified At Creation
+     */
+    verified_at_creation: string | null;
 };
 
 /**
@@ -1386,3 +1488,33 @@ export type ScheduleDeparturesSchedulesRunIdDeparturesGetResponses = {
 };
 
 export type ScheduleDeparturesSchedulesRunIdDeparturesGetResponse = ScheduleDeparturesSchedulesRunIdDeparturesGetResponses[keyof ScheduleDeparturesSchedulesRunIdDeparturesGetResponses];
+
+export type StatusOperationsBackupsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/operations/backups';
+};
+
+export type StatusOperationsBackupsGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StatusOperationsBackupsGetError = StatusOperationsBackupsGetErrors[keyof StatusOperationsBackupsGetErrors];
+
+export type StatusOperationsBackupsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: BackupStatus;
+};
+
+export type StatusOperationsBackupsGetResponse = StatusOperationsBackupsGetResponses[keyof StatusOperationsBackupsGetResponses];
