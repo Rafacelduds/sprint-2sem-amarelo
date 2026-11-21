@@ -22,9 +22,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       s3-backup:
-        image: localstack/localstack:3.8
+        image: gresau/localstack-persist:3.8.1
         env:
           SERVICES: s3
+          PERSIST_DEFAULT: '0'
+          PERSIST_S3: '1'
         ports:
           - 4567:4566
         options: >-
@@ -42,9 +44,11 @@ jobs:
           --health-cmd "pg_isready -U amarelo -d amarelo_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
       s3:
-        image: localstack/localstack:3.8
+        image: gresau/localstack-persist:3.8.1
         env:
           SERVICES: s3
+          PERSIST_DEFAULT: '0'
+          PERSIST_S3: '1'
         ports:
           - 4566:4566
         options: >-
