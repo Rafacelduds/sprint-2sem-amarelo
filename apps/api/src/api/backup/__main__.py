@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pydantic import SecretStr
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from api.backup.models import BackupAttempt, BackupRun, BackupWorker
@@ -103,7 +103,11 @@ async def main() -> None:
                     await guard.commit()
                     async with sessions() as session:
                         last = await session.scalar(select(func.max(BackupRun.completed_at)))
-                    if args.command == "run" or backup_due(last, datetime.now(UTC)):
+                        worker = await session.get(BackupWorker, "daily")
+                    retry_at = worker.retry_at if worker else None
+                    now = datetime.now(UTC)
+                    due = retry_at <= now if retry_at is not None else backup_due(last, now)
+                    if args.command == "run" or due:
                         try:
                             ref = await record_attempt(service, version)
                             async with sessions.begin() as session:
@@ -130,7 +134,12 @@ async def main() -> None:
                     with suppress(asyncio.CancelledError):
                         await ticker
                     async with sessions.begin() as session:
-                        await session.execute(delete(BackupWorker))
+                        # Desativar o sinal sem perder um retry pendente no reinício.
+                        await session.execute(
+                            update(BackupWorker)
+                            .where(BackupWorker.id == "daily")
+                            .values(heartbeat_at=None)
+                        )
     finally:
         await engine.dispose()
 

@@ -107,7 +107,9 @@ async def status(
             ).all()
         )
     active = (
-        worker is not None and 0 <= (now - worker.heartbeat_at).total_seconds() <= STALE_SECONDS
+        worker is not None
+        and worker.heartbeat_at is not None
+        and 0 <= (now - worker.heartbeat_at).total_seconds() <= STALE_SECONDS
     )
     overdue = backup_due(last_success, now)
     next_execution = None

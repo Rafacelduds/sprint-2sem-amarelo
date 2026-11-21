@@ -59,11 +59,16 @@ Bearer e com `Cache-Control: no-store`. A resposta usa uma lista explícita de
 campos e não inclui buckets, chaves internas, endpoints, credenciais nem links
 para dumps. O contrato e o cliente TypeScript são gerados normalmente.
 
-Antes de iniciar o job atualizado, aplique a migração `20261120_0010`. Ela acrescenta
-`backup_worker` e `backup_attempts`, preservando os pontos anteriores. O processo
+Antes de iniciar o job atualizado, aplique as migrações até `20261120_0011`.
+A `20261120_0010` acrescenta `backup_worker` e `backup_attempts`, preservando os
+pontos anteriores; a `20261120_0011` permite desativar o heartbeat sem perder uma
+tentativa reagendada. O downgrade desta última é recusado enquanto houver retry
+pendente numa rotina parada, evitando descartar a agenda silenciosamente. O processo
 `watch` registra heartbeat a cada 30 segundos; a consulta considera o sinal recente
 por até 120 segundos. Parada abrupta pode levar até esse limite para aparecer como
-inativa. O encerramento normal remove o registro de atividade. Existência de um
+inativa. Falhas transitórias do heartbeat são tentadas novamente no próximo intervalo,
+sem registrar detalhes privados da exceção. O encerramento normal desativa o sinal
+e preserva o reagendamento. Existência de um
 backup antigo, API respondendo e contagem de objetos não são provas de rotina ativa.
 
 As tentativas de `run` e `watch` são registradas com início, fim, resultado e vínculo
@@ -73,6 +78,12 @@ falhas as tentativas que ficaram sem conclusão após uma interrupção. Comando
 pontuais não anunciam rotina diária ativa. O próximo horário usa o mesmo corte
 das 03:00 UTC do job; falhas do `watch` exibem a próxima tentativa em cinco minutos.
 Sem sinal recente, a tela não promete uma próxima execução.
+
+O reagendamento pendente tem precedência sobre o corte diário: é respeitado mesmo
+quando o ponto foi catalogado antes de uma falha de limpeza/retenção. O reinício
+conserva essa pendência, aguarda seu horário e só a limpa após uma execução completa
+bem-sucedida. Um retry pode criar outro ponto válido no mesmo período. Os testes
+do agendador exercitam falha pós-catálogo, retomada, espera e encerramento normal.
 
 O painel mostra os últimos 20 pontos e tentativas, última consulta, último ponto
 concluído, agenda, atraso, hashes e expiração. Um ponto criado com a nova

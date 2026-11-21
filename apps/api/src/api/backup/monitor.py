@@ -1,6 +1,7 @@
 """Evidência persistida pelo job, sem inferir atividade pela existência de backups."""
 
 import asyncio
+import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -14,6 +15,7 @@ from api.storage.contracts import ObjectRef
 
 HEARTBEAT_SECONDS = 30
 STALE_SECONDS = 120
+logger = logging.getLogger(__name__)
 
 
 def cutoff(now: datetime) -> datetime:
@@ -38,7 +40,12 @@ async def pulse(sessions: async_sessionmaker[AsyncSession]) -> None:
 
 async def heartbeat(sessions: async_sessionmaker[AsyncSession]) -> None:
     while True:
-        await pulse(sessions)
+        try:
+            await pulse(sessions)
+        except Exception:
+            # Cancelamento continua propagando; erros transitórios não matam o ticker.
+            # Nunca registrar a exceção: ela pode conter a conexão privada.
+            logger.warning("backup_heartbeat_failed; retrying")
         await asyncio.sleep(HEARTBEAT_SECONDS)
 
 

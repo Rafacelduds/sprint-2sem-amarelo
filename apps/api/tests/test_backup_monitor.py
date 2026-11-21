@@ -101,6 +101,14 @@ async def test_status_uses_persisted_evidence_and_redacts_storage(
             worker.heartbeat_at = now - timedelta(seconds=121)
         data = (await client.get("/operations/backups", headers=headers)).json()
         assert not data["worker_active"]
+        async with sessions.begin() as session:
+            worker = await session.get(BackupWorker, "daily")
+            assert worker is not None
+            worker.heartbeat_at = None
+            worker.retry_at = now + timedelta(minutes=5)
+        data = (await client.get("/operations/backups", headers=headers)).json()
+        assert not data["worker_active"] and data["next_execution"] is None
+        assert data["heartbeat_at"] is None
     await engine.dispose()
 
 

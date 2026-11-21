@@ -46,7 +46,7 @@ class BackupReceipt(Base):
 class BackupWorker(Base):
     __tablename__ = "backup_worker"
     id: Mapped[str] = mapped_column(primary_key=True)
-    heartbeat_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
