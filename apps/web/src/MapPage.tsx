@@ -21,6 +21,8 @@ import { useNetworkRoutes } from "./useNetworkRoutes";
 import { usePositions } from "./usePositions";
 import "./App.css";
 
+const NO_AREAS: string[] = [];
+
 export default function MapPage() {
   const { snapshot, error, loading, now, stale, age, retry } = usePositions();
   const [query, setQuery] = useState("");
@@ -57,6 +59,8 @@ export default function MapPage() {
   const [catalog, setCatalog] = useState<NetworkCatalog | null>(null);
   const [routeRetry, setRouteRetry] = useState(0);
   const styles = useMemo(() => lineStyles(catalog), [catalog]);
+  // Preservar a intenção do usuário sem aplicar associações GTFS indisponíveis.
+  const effectiveAreas = catalog?.status === "ready" ? areas : NO_AREAS;
   const onBounds = useCallback((value: Bounds) => setBounds(value), []);
 
   useEffect(() => {
@@ -80,9 +84,9 @@ export default function MapPage() {
       !snapshot || stale
         ? []
         : snapshot.vehicles.filter((bus) =>
-            matchesFilters(bus, selection, areas, styles),
+            matchesFilters(bus, selection, effectiveAreas, styles),
           ),
-    [snapshot, stale, selection, areas, styles],
+    [snapshot, stale, selection, effectiveAreas, styles],
   );
   const selectedVehicle = vehicles.find((bus) => bus.id === selectedId) ?? null;
   const visible = useMemo(
@@ -109,7 +113,7 @@ export default function MapPage() {
     >();
     for (const item of snapshot?.lines ?? []) {
       const key = String(styles.get(item.id)?.area ?? "unknown");
-      if (areas.length && !areas.includes(key)) continue;
+      if (effectiveAreas.length && !effectiveAreas.includes(key)) continue;
       const group = groups.get(item.label) ?? { label: item.label, senses: [] };
       group.senses.push(item);
       groups.set(item.label, group);
@@ -122,7 +126,7 @@ export default function MapPage() {
           .includes(search),
       )
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [snapshot?.lines, query, styles, areas]);
+  }, [snapshot?.lines, query, styles, effectiveAreas]);
   const selectedIds = useMemo(
     () =>
       (snapshot?.lines ?? [])
@@ -131,22 +135,22 @@ export default function MapPage() {
           return (
             chosen !== undefined &&
             (chosen === "both" || chosen === l.direction) &&
-            (!areas.length ||
-              areas.includes(String(styles.get(l.id)?.area ?? "unknown")))
+            (!effectiveAreas.length ||
+              effectiveAreas.includes(String(styles.get(l.id)?.area ?? "unknown")))
           );
         })
         .map((l) => l.id),
-    [selection, snapshot?.lines, areas, styles],
+    [selection, snapshot?.lines, effectiveAreas, styles],
   );
   const areaRouteScope =
-    areas.length > 0 && Object.keys(selection).length === 0;
+    effectiveAreas.length > 0 && Object.keys(selection).length === 0;
   const routeIds = useMemo(() => {
     if (!areaRouteScope) return [...selectedIds].sort((a, b) => a - b);
     return (catalog?.lines ?? [])
-      .filter((line) => areas.includes(String(line.area_id ?? "unknown")))
+      .filter((line) => effectiveAreas.includes(String(line.area_id ?? "unknown")))
       .map((line) => line.line_id)
       .sort((a, b) => a - b);
-  }, [areaRouteScope, areas, catalog?.lines, selectedIds]);
+  }, [areaRouteScope, effectiveAreas, catalog?.lines, selectedIds]);
   const {
     routes,
     missing: routeMissing,
@@ -400,7 +404,7 @@ export default function MapPage() {
                 ))}
               </b>
               <span>
-                {areas.length ? `${areas.length} selecionadas` : "Todas"}
+                {areas.length ? `${areas.length} selecionadas${catalog?.status === "ready" ? "" : " · suspensas"}` : "Todas"}
               </span>
             </summary>
             <div className="area-options">
@@ -420,6 +424,7 @@ export default function MapPage() {
                 <input
                   type="checkbox"
                   checked={areas.includes("unknown")}
+                  disabled={catalog?.status !== "ready"}
                   onChange={() => toggleArea("unknown")}
                 />
                 <i style={{ background: UNKNOWN_COLOR }} />
@@ -432,6 +437,8 @@ export default function MapPage() {
             <p className="catalog-note">
               Cores e percursos planejados indisponíveis no momento. As posições
               continuam disponíveis.
+              {areas.length > 0 && <> Filtro por área suspenso até a referência
+                voltar; filtros de linha e sentido continuam ativos.</>}
             </p>
           )}
           {catalog?.synthetic && (

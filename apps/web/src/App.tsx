@@ -24,7 +24,7 @@ export default function App() {
     document.title = `ObservaÔnibus — ${page === "backups" ? "Backups e recuperação" : page === "exports" ? "Dados brutos em Parquet" : page === "schedules" ? "Programação das linhas" : page === "reliability" ? "Confiabilidade da coleta" : page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
   }, [page]);
   return (
-    <>
+    <div className={page === "map" ? "app-shell app-shell-map" : "app-shell"}>
       <nav className="site-navigation" aria-label="Navegação principal">
         <span>
           ObservaÔnibus <small>São Paulo</small>
@@ -48,6 +48,6 @@ export default function App() {
         </div>
       </nav>
       {page === "backups" ? <BackupsPage /> : page === "exports" ? <ExportsPage /> : page === "schedules" ? <SchedulesPage /> : page === "reliability" ? <ReliabilityPage /> : page === "documents" ? <DocumentsPage /> : <MapPage />}
-    </>
+    </div>
   );
 }

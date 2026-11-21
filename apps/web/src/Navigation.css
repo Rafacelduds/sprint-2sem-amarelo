@@ -1,4 +1,14 @@
+.app-shell {
+  min-height: 100dvh;
+}
+.app-shell-map {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .site-navigation {
+  flex: none;
   min-height: 58px;
   padding: 10px 24px;
   display: flex;
@@ -33,11 +43,26 @@
   color: #164d46;
   font-weight: 650;
 }
-.site-navigation ~ .map-app {
-  height: calc(100dvh - 58px);
+.app-shell-map > .map-app {
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
-.site-navigation ~ .map-app .explorer {
-  max-height: calc(100dvh - 168px);
+.app-shell-map .explorer {
+  max-height: calc(100% - 44px);
+}
+.app-shell-map .map-info {
+  z-index: 700;
+  max-height: calc(100% - 80px);
+}
+@media (max-width: 700px) {
+  .app-shell-map .explorer {
+    max-height: 44%;
+  }
+  .app-shell-map .map-info {
+    bottom: calc(44% + 40px);
+    max-height: calc(56% - 55px);
+  }
 }
 @media (max-width: 600px) {
   .site-navigation {
