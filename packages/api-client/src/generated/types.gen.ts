@@ -149,6 +149,70 @@ export type CatalogLine = {
 };
 
 /**
+ * CollectionStatus
+ */
+export type CollectionStatus = {
+    /**
+     * Checked At
+     */
+    checked_at: string;
+    /**
+     * Recent Activity
+     */
+    recent_activity: boolean;
+    /**
+     * Age Seconds
+     */
+    age_seconds: number | null;
+    /**
+     * Activity Timeout Seconds
+     */
+    activity_timeout_seconds: number;
+    /**
+     * Last Success At
+     */
+    last_success_at: string | null;
+    /**
+     * Cycles
+     */
+    cycles: Array<CycleView>;
+};
+
+/**
+ * CycleView
+ */
+export type CycleView = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Scheduled At
+     */
+    scheduled_at: string;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Snapshots
+     */
+    snapshots: number;
+    /**
+     * Positions
+     */
+    positions: number;
+    /**
+     * Collected At
+     */
+    collected_at: string | null;
+};
+
+/**
  * DepartureItem
  */
 export type DepartureItem = {
@@ -1518,3 +1582,19 @@ export type StatusOperationsBackupsGetResponses = {
 };
 
 export type StatusOperationsBackupsGetResponse = StatusOperationsBackupsGetResponses[keyof StatusOperationsBackupsGetResponses];
+
+export type CollectionStatusOperationsCollectionGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/operations/collection';
+};
+
+export type CollectionStatusOperationsCollectionGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CollectionStatus;
+};
+
+export type CollectionStatusOperationsCollectionGetResponse = CollectionStatusOperationsCollectionGetResponses[keyof CollectionStatusOperationsCollectionGetResponses];

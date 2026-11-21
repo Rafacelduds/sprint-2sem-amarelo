@@ -4,6 +4,7 @@ import DocumentsPage from "./DocumentsPage";
 import SchedulesPage from "./SchedulesPage";
 import ReliabilityPage from "./ReliabilityPage";
 import ExportsPage from "./ExportsPage";
+import CollectionPage from "./CollectionPage";
 import BackupsPage from "./BackupsPage";
 import "./Navigation.css";
 
@@ -14,14 +15,15 @@ function subscribe(listener: () => void) {
 
 export default function App() {
   const page = useSyncExternalStore(subscribe, () =>
-    window.location.hash === "#backups" ? "backups"
+    window.location.hash === "#coleta" ? "collection"
+      : window.location.hash === "#backups" ? "backups"
       : window.location.hash === "#dados-brutos" ? "exports"
       : window.location.hash === "#programacao" ? "schedules"
       : window.location.hash === "#confiabilidade" ? "reliability"
       : window.location.hash === "#acervo" ? "documents" : "map",
   );
   useEffect(() => {
-    document.title = `ObservaÔnibus — ${page === "backups" ? "Backups e recuperação" : page === "exports" ? "Dados brutos em Parquet" : page === "schedules" ? "Programação das linhas" : page === "reliability" ? "Confiabilidade da coleta" : page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
+    document.title = `ObservaÔnibus — ${page === "collection" ? "Coleta persistida" : page === "backups" ? "Backups e recuperação" : page === "exports" ? "Dados brutos em Parquet" : page === "schedules" ? "Programação das linhas" : page === "reliability" ? "Confiabilidade da coleta" : page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
   }, [page]);
   return (
     <div className={page === "map" ? "app-shell app-shell-map" : "app-shell"}>
@@ -44,10 +46,11 @@ export default function App() {
             Confiabilidade
           </a>
           <a href="#dados-brutos" aria-current={page === "exports" ? "page" : undefined}>Dados brutos</a>
+          <a href="#coleta" aria-current={page === "collection" ? "page" : undefined}>Coleta · equipe</a>
           <a href="#backups" aria-current={page === "backups" ? "page" : undefined}>Backups · equipe</a>
         </div>
       </nav>
-      {page === "backups" ? <BackupsPage /> : page === "exports" ? <ExportsPage /> : page === "schedules" ? <SchedulesPage /> : page === "reliability" ? <ReliabilityPage /> : page === "documents" ? <DocumentsPage /> : <MapPage />}
+      {page === "collection" ? <CollectionPage /> : page === "backups" ? <BackupsPage /> : page === "exports" ? <ExportsPage /> : page === "schedules" ? <SchedulesPage /> : page === "reliability" ? <ReliabilityPage /> : page === "documents" ? <DocumentsPage /> : <MapPage />}
     </div>
   );
 }
