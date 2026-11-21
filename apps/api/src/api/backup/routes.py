@@ -100,7 +100,8 @@ async def status(
             (
                 await session.execute(
                     select(BackupAttempt.backup_id, BackupAttempt.finished_at).where(
-                        BackupAttempt.status == "success", BackupAttempt.backup_id.is_not(None)
+                        BackupAttempt.status == "success",
+                        BackupAttempt.backup_id.in_([run.id for run in runs]),
                     )
                 )
             ).all()
