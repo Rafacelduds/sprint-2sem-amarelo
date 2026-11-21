@@ -190,6 +190,43 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe("Rede pública", () => {
+  it.each(["http", "unavailable"])("suspends area filtering on %s and restores it with the catalog", async (failure) => {
+    let failing = false;
+    const intervals = vi.spyOn(globalThis, "setInterval");
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (String(url).includes("/network/catalog")) return failing
+        ? failure === "http" ? new Response("", { status: 503 })
+          : Response.json({ status: "unavailable", areas: [], lines: [] })
+        : Response.json(network);
+      if (String(url).includes("/network/routes")) return new Response("", { status: 404 });
+      return Response.json(snapshot());
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByLabelText(/2 · Norte/));
+    expect(screen.getByTestId("map")).toHaveTextContent(/^100,110$/);
+    const refresh = intervals.mock.calls.find(([, delay]) => delay === 60_000)?.[0];
+    expect(typeof refresh).toBe("function");
+    failing = true;
+    await act(async () => { if (typeof refresh === "function") refresh(); });
+    expect(screen.getByTestId("map")).toHaveTextContent(/^100,110,200$/);
+    expect(screen.getByText(/Filtro por área suspenso/)).toBeInTheDocument();
+    expect(screen.getByTestId("routes")).toBeEmptyDOMElement();
+    // Continuar refinando linha/sentido independe das associações do GTFS.
+    fireEvent.click(screen.getByRole("button", { name: /5015-10/ }));
+    fireEvent.change(screen.getByLabelText("Sentido da linha 5015-10"), { target: { value: "2" } });
+    expect(screen.getByTestId("map")).toHaveTextContent(/^110$/);
+    failing = false;
+    await act(async () => { if (typeof refresh === "function") refresh(); });
+    expect(screen.queryByText(/Filtro por área suspenso/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/2 · Norte/)).toBeChecked();
+    expect(screen.getByTestId("map")).toHaveTextContent(/^110$/);
+    failing = true;
+    await act(async () => { if (typeof refresh === "function") refresh(); });
+    expect(screen.getByText(/Filtro por área suspenso/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Sentido da linha 5015-10")).toHaveValue("2");
+    expect(screen.getByTestId("map")).toHaveTextContent(/^110$/);
+  });
+
   it("shows complete GTFS provenance with an explicit timezone", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
       new Response(JSON.stringify(String(url).includes("/network/catalog")

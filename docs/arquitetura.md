@@ -102,6 +102,18 @@ Um único candidato recebe foco direto; vários abrem Linhas neste trecho no pai
 
 ### Percursos automáticos por área — US22
 
+Se o catálogo GTFS falhar ou informar indisponibilidade, somente o filtro por
+área fica suspenso: GPS recente e filtros de linha/sentido continuam funcionando,
+sem cores ou percursos não comprovados. A seleção de áreas permanece como
+intenção, com aviso, e é retomada quando houver referência disponível; limpar
+filtros também remove essa intenção. Sem referência, a opção Área não identificada
+fica desabilitada. Falhas não transformam o recorte em zero ônibus.
+
+A tela do mapa ocupa a altura restante de um contêiner flex de `100dvh`, após
+a navegação, inclusive quando o menu quebra linhas. O limite de rolagem do
+explorador e da legenda é relativo ao mapa; em celular o explorador usa até 44%
+da altura disponível. Outras páginas continuam com rolagem normal do documento.
+
 Com áreas selecionadas e sem filtro explícito de linhas, a lista de IDs para percursos vem das associações do catálogo atual nessas áreas. Não depende de haver veículo daquele sentido no recorte visível do mapa. Com linhas/sentidos selecionados, mantém-se a interseção dos filtros; sem área nem linha, não se carrega a rede inteira. A cobertura continua limitada ao catálogo publicado pelo adaptador US02/Olho Vivo, e não deve ser descrita como a totalidade da programação oficial. A categoria Área não identificada não inventa associações; só consulta entradas existentes no catálogo com área desconhecida.
 
 `useNetworkRoutes` limita a quatro requisições simultâneas nos endpoints existentes, publica resultados em lotes de até 100 ms e expõe progresso/falhas. Cache em memória por versão GTFS tem até 512 entradas, com descarte das mais antigas; mudança de versão descarta o cache anterior. Mudanças de filtros abortam consultas antigas e impedem publicação/cache de respostas obsoletas. Retry invalida somente falhas; respostas de outra versão são tratadas como indisponíveis. Resultados mantêm referência estável nas atualizações do relógio para não reconstruir os traçados a cada segundo. A versão e IDs atuais filtram o que pode permanecer desenhado durante uma transição.
