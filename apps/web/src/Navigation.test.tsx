@@ -8,9 +8,21 @@ vi.mock("./DocumentsPage", () => ({
 }));
 vi.mock("./SchedulesPage", () => ({ default: () => <main>Consulta de programação</main> }));
 vi.mock("./ReliabilityPage", () => ({ default: () => <main>Consulta de confiabilidade</main> }));
+vi.mock("./ExportsPage", () => ({ default: () => <main>Consulta de dados brutos</main> }));
 afterEach(() => {
   cleanup();
   window.history.replaceState(null, "", "/");
+});
+
+it("abre dados brutos por link direto e preserva a navegação existente", () => {
+  window.history.replaceState(null, "", "/#dados-brutos");
+  render(<App />);
+  expect(screen.getByText("Consulta de dados brutos")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Dados brutos" })).toHaveAttribute("aria-current", "page");
+  expect(document.title).toContain("Dados brutos em Parquet");
+  window.history.replaceState(null, "", "/#mapa");
+  fireEvent(window, new HashChangeEvent("hashchange"));
+  expect(screen.getByText("Mapa da rede")).toBeInTheDocument();
 });
 
 it("abre confiabilidade por link direto e permite voltar ao acervo", () => {
