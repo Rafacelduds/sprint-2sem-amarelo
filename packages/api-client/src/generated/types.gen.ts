@@ -153,6 +153,10 @@ export type CatalogLine = {
  */
 export type CollectionStatus = {
     /**
+     * Alert Configured Now
+     */
+    alert_configured_now: boolean;
+    /**
      * Checked At
      */
     checked_at: string;
@@ -210,6 +214,32 @@ export type CycleView = {
      * Collected At
      */
     collected_at: string | null;
+    /**
+     * Diagnostics
+     */
+    diagnostics: {
+        [key: string]: string;
+    };
+    /**
+     * Failure Started At
+     */
+    failure_started_at: string | null;
+    /**
+     * Recovered At
+     */
+    recovered_at: string | null;
+    /**
+     * Outage Seconds
+     */
+    outage_seconds: number | null;
+    /**
+     * Alert Delivered At
+     */
+    alert_delivered_at: string | null;
+    /**
+     * Recovery Alert Delivered At
+     */
+    recovery_alert_delivered_at: string | null;
 };
 
 /**

@@ -167,3 +167,20 @@ respostas válidas e não equivale a viagem cancelada. O mapa usa seu adaptador 
 A guarda imutável (US12), publicação (US09) e relatório (US13) continuam processos
 próprios; os atalhos da tela não executam esses processos. Configure e execute o
 coletor conforme as seções anteriores antes de esperar novos ciclos no painel.
+
+### Incidentes e recuperação no painel (US29)
+
+Cada ciclo mostra diagnóstico com vocabulário sanitizado (mesmas regras dos alertas),
+rodadas de consulta/retentativa e coleta preservada, quando esses dados foram gravados.
+O início de uma sequência incompleta é a primeira falha registrada após o último
+sucesso integral; a recuperação é o primeiro sucesso integral posterior. Duração
+observada não reconstrói períodos sem processo e não comprova indisponibilidade
+contínua da SPTrans. Ciclos sem diagnóstico não recebem contagens inventadas.
+
+A confirmação de envio vem de `alerted_at`/`recovery_alerted_at` do ciclo ao qual
+o alerta foi associado; não é repetida em todos os ciclos do mesmo incidente.
+Sem confirmação, o estado é desconhecido/sem evidência: a implementação anterior
+não persiste todas as tentativas malsucedidas de entrega. A configuração atual da
+API é indicada separadamente e pode diferir do ambiente do coletor. Nenhum endpoint
+deste painel envia mensagens ou provoca falhas. A simulação automatizada usa schema
+PostgreSQL isolado e não altera ciclos reais nem chama webhook.
