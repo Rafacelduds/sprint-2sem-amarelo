@@ -18,10 +18,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   s3:
-    image: localstack/localstack:3.8
+    image: gresau/localstack-persist:3.8.1
     environment:
       SERVICES: s3
-      PERSISTENCE: "1"
+      PERSIST_DEFAULT: "0"
+      PERSIST_S3: "1"
+      PERSIST_BASE_DIR: /persisted-data/s3-state
       AWS_DEFAULT_REGION: ${S3_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-test}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-test}
@@ -34,15 +36,17 @@ services:
     ports:
       - "4566:4566"
     volumes:
-      - localstack_data:/var/lib/localstack
+      - localstack_data:/persisted-data
       - ./infra/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro
 
   s3-backup:
     profiles: [backup]
-    image: localstack/localstack:3.8
+    image: gresau/localstack-persist:3.8.1
     environment:
       SERVICES: s3
-      PERSISTENCE: "1"
+      PERSIST_DEFAULT: "0"
+      PERSIST_S3: "1"
+      PERSIST_BASE_DIR: /persisted-data/s3-state
       AWS_DEFAULT_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
@@ -55,7 +59,7 @@ services:
     ports:
       - "4567:4566"
     volumes:
-      - backup_data:/var/lib/localstack
+      - backup_data:/persisted-data
       - ./infra/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro
 
   backup:

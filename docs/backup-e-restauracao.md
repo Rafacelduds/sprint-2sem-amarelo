@@ -185,10 +185,21 @@ head Alembic para US02 e US32, sem reescrever migrações publicadas.
 
 No desenvolvimento são duas instâncias LocalStack com volumes distintos.
 É possível desligar o principal no ensaio, mas ambos compartilham a máquina física.
-Ambas habilitam `PERSISTENCE=1`: montar `/var/lib/localstack` sozinho não
-conserva o catálogo de objetos/versões entre execuções do emulador. Ao parar
-normalmente e recriar os containers com os volumes preservados, o estado é
-carregado novamente. Não use `down --volumes` no ambiente que contém dados.
+As duas usam `gresau/localstack-persist:3.8.1`, distribuição aberta baseada no
+LocalStack 3.8 com persistência. Na imagem Community anterior, `PERSISTENCE=1`
+sozinho não implementa a persistência nativa, restrita à edição paga; o ensaio
+real de recriação detectou essa limitação antes de concluir a correção.
+O [projeto da distribuição](https://github.com/GREsau/localstack-persist/tree/v3.8.1)
+é uma dependência de desenvolvimento, com versão fixada e persistência habilitada
+somente para S3 (`PERSIST_DEFAULT=0`, `PERSIST_S3=1`). Sua manutenção futura é
+limitada; mudança de versão ou substituição exige repetir o ensaio da CI.
+
+Os volumes nomeados existentes são preservados, agora montados em `/persisted-data`.
+O estado novo usa somente a subpasta `s3-state`; conteúdo antigo não é importado
+ou apagado. Não atualize containers com trabalho em andamento: interrompa os
+produtores de forma controlada antes da atualização. Ao parar normalmente e
+recriar os containers com esses volumes, o estado é carregado novamente.
+Não use `down --volumes` no ambiente que contém dados.
 Isso não recupera bytes já ausentes nem garante recuperação de encerramento
 abrupto; mantenha cópias independentes fora da máquina para dados importantes.
 

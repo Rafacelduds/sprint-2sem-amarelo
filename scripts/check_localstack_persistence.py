@@ -28,7 +28,7 @@ def compose_config() -> dict:
     for role in ROLES:
         original = configured["services"][role]
         environment = dict(original["environment"])
-        if str(environment.get("PERSISTENCE")) != "1":
+        if str(environment.get("PERSIST_S3")) != "1":
             raise AssertionError(f"{role}: persistência não habilitada no Compose")
         # Nunca reutilizar credenciais, portas ou volumes nomeados do ambiente real.
         environment.update(AWS_ACCESS_KEY_ID="test", AWS_SECRET_ACCESS_KEY="test")
@@ -40,6 +40,7 @@ def compose_config() -> dict:
                 mounts.append(
                     {"type": "volume", "source": mount["source"], "target": mount["target"]}
                 )
+        assert any(mount["target"] == "/persisted-data" for mount in mounts)
         services[role] = {
             "image": original["image"],
             "environment": environment,
@@ -119,6 +120,9 @@ def main() -> None:
                     s3.head_object(Bucket=bucket, Key="probe")["VersionId"] == versions[role][-1][0]
                 )
                 print(f"{role}: duas versões, hashes e versão atual preservados após recriação")
+        except BaseException:
+            print(run("logs", "--no-color"))
+            raise
         finally:
             # O nome aleatório e o arquivo gerado não contêm volumes externos ou nomes físicos.
             run("down", "--volumes", "--remove-orphans")
