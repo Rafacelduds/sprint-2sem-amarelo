@@ -57,6 +57,14 @@ Captura diária ou semanal, política de vigência histórica e corte do dia
 operacional continuam sujeitos ao PO; essa resposta não define essas regras e
 a implementação não instala um agendamento.
 
+Em 21/11/2026, Daniel explicitou a necessidade de atualização automática.
+A ausência de agendamento permanece uma lacuna de produto; a frequência e o
+calendário ainda precisam ser definidos. A tela consulta uma linha por vez,
+mas a carga local atual tem uma amostra de 30 linhas, sem cobertura integral
+nem concordância de 100%. A nova captura não substitui a conferência histórica
+citada acima. Números e pendências no
+[registro da integração](evidencias/2026-11-21-us05.md#cobertura-divergências-e-automação-da-programação--us04).
+
 ## Fonte oficial e execução
 
 A [página oficial de itinerários](https://www.sptrans.com.br/itinerarios/linha/)

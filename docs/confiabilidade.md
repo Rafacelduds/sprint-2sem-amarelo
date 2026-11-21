@@ -45,6 +45,13 @@ de lacunas tem rolagem horizontal própria, sem alargar a página.
 
 ## Executar e consultar
 
+**Limitação observada em 21/11/2026:** o relatório provisório do ambiente local
+mostra tempo sem lacunas próximo de zero. A coleta começou às 14:15 e há falhas
+parciais de origem em consultas de garagem; as respostas disponíveis continuam
+preservadas. Publicar o relatório não comprova operação integral saudável.
+Leitura do resultado, evidências e investigação pendente no
+[registro da integração](evidencias/2026-11-21-us05.md#confiabilidade-baixa-e-coleta-incompleta--us01us29us13).
+
 Aplique as migrações conforme o README. Configure `DATABASE_URL`, S3 e
 `GTFS_SOURCE_ID` como nos coletores existentes. Nenhum token Olho Vivo é necessário.
 
