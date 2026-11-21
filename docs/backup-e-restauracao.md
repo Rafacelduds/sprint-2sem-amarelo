@@ -194,11 +194,12 @@ O [projeto da distribuição](https://github.com/GREsau/localstack-persist/tree/
 somente para S3 (`PERSIST_DEFAULT=0`, `PERSIST_S3=1`). Sua manutenção futura é
 limitada; mudança de versão ou substituição exige repetir o ensaio da CI.
 
-Os volumes nomeados existentes são preservados, agora montados em `/persisted-data`.
-O estado novo usa somente a subpasta `s3-state`; conteúdo antigo não é importado
-ou apagado. Não atualize containers com trabalho em andamento: interrompa os
-produtores de forma controlada antes da atualização. Ao parar normalmente e
-recriar os containers com esses volumes, o estado é carregado novamente.
+Os volumes anteriores `localstack_data` e `backup_data` permanecem declarados,
+sem montagem na imagem nova. O estado novo usa volumes exclusivos
+`localstack_persisted` e `backup_persisted` montados em `/persisted-data`, com
+layout suportado `s3/`. Não há importação automática ou remoção dos dados antigos.
+`PERSIST_BASE_DIR` não é suportada nesta versão e foi removida.
+Interrompa os produtores de forma controlada antes de atualizar containers.
 Não use `down --volumes` no ambiente que contém dados.
 Isso não recupera bytes já ausentes nem garante recuperação de encerramento
 abrupto; mantenha cópias independentes fora da máquina para dados importantes.

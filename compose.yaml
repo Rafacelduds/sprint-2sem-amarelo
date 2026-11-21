@@ -23,7 +23,6 @@ services:
       SERVICES: s3
       PERSIST_DEFAULT: "0"
       PERSIST_S3: "1"
-      PERSIST_BASE_DIR: /persisted-data/s3-state
       AWS_DEFAULT_REGION: ${S3_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-test}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-test}
@@ -36,7 +35,7 @@ services:
     ports:
       - "4566:4566"
     volumes:
-      - localstack_data:/persisted-data
+      - localstack_persisted:/persisted-data
       - ./infra/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro
 
   s3-backup:
@@ -46,7 +45,6 @@ services:
       SERVICES: s3
       PERSIST_DEFAULT: "0"
       PERSIST_S3: "1"
-      PERSIST_BASE_DIR: /persisted-data/s3-state
       AWS_DEFAULT_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
@@ -59,7 +57,7 @@ services:
     ports:
       - "4567:4566"
     volumes:
-      - backup_data:/persisted-data
+      - backup_persisted:/persisted-data
       - ./infra/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro
 
   backup:
@@ -273,3 +271,6 @@ volumes:
   localstack_data:
   backup_data:
 
+
+  localstack_persisted:
+  backup_persisted:

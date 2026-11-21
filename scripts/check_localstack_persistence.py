@@ -33,9 +33,11 @@ def compose_config() -> dict:
         # Nunca reutilizar credenciais, portas ou volumes nomeados do ambiente real.
         environment.update(AWS_ACCESS_KEY_ID="test", AWS_SECRET_ACCESS_KEY="test")
         mounts = []
+        assert "PERSIST_BASE_DIR" not in environment
         for mount in original["volumes"]:
             if mount["type"] == "volume":
                 assert not configured["volumes"][mount["source"]].get("external")
+                assert mount["source"] not in {"localstack_data", "backup_data"}
                 volumes[mount["source"]] = {}
                 mounts.append(
                     {"type": "volume", "source": mount["source"], "target": mount["target"]}
@@ -92,6 +94,15 @@ def main() -> None:
         try:
             run("up", "--detach", "--wait", "--wait-timeout", "180")
             for role in ROLES:
+                run(
+                    "exec",
+                    "-T",
+                    role,
+                    "sh",
+                    "-c",
+                    "mkdir -p /persisted-data/pre-existing; "
+                    "printf preserved > /persisted-data/pre-existing/sentinel",
+                )
                 s3 = client(role)
                 s3.create_bucket(Bucket=bucket)
                 s3.put_bucket_versioning(
@@ -108,6 +119,11 @@ def main() -> None:
             run("up", "--detach", "--wait", "--wait-timeout", "180")
             for role in ROLES:
                 s3 = client(role)
+                assert (
+                    run("exec", "-T", role, "cat", "/persisted-data/pre-existing/sentinel")
+                    == "preserved"
+                )
+                run("exec", "-T", role, "test", "-d", "/persisted-data/s3/assets")
                 listed = s3.list_object_versions(Bucket=bucket)["Versions"]
                 assert {item["VersionId"] for item in listed} == {
                     version for version, _ in versions[role]
