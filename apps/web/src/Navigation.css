@@ -9,6 +9,7 @@
 }
 .site-navigation {
   flex: none;
+  flex-wrap: wrap;
   min-height: 58px;
   padding: 10px 24px;
   display: flex;
@@ -30,6 +31,8 @@
 }
 .site-navigation > div {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   gap: 8px;
 }
 .site-navigation a {
