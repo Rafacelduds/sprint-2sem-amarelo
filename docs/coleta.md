@@ -4,8 +4,8 @@ Implementação da [US01](https://trello.com/c/MuuQFXEX) e da [US29](https://tre
 
 ## Configuração e execução
 
-Mantenha `apps/api/.env` privado, organizado como `apps/api/.env.example`.
-Use os dois `--env-file` do README nos comandos Compose. O coletor aceita
+Mantenha `.env` privado, organizado como `.env.example`.
+O Compose lê automaticamente o `.env` da raiz. O coletor aceita
 `CHAVE_API_OLHO_VIVO`, `OLHOVIVO_TOKEN` e `OLHO_VIVO_TOKEN`, nessa ordem de
 precedência, compartilhada com o mapa. Valores vazios são ignorados; configure
 apenas um dos nomes. Nunca use `VITE_*` para credenciais.
@@ -83,7 +83,7 @@ Só uma resposta HTTP bem-sucedida marca `alerted_at`. Falha ou ausência de des
 
 ## Configurar os alertas no Discord
 
-No Discord, crie um servidor do projeto e um canal de **texto comum** chamado `alertas-coleta`. Em **Configurações do servidor → Integrações → Webhooks**, crie um webhook, selecione esse canal e dê um nome como `Coletor de ônibus`. Também é possível acessar as integrações pelas configurações do canal. Sua conta precisa da permissão de gerenciar webhooks. Copie a URL e salve somente em `apps/api/.env`:
+No Discord, crie um servidor do projeto e um canal de **texto comum** chamado `alertas-coleta`. Em **Configurações do servidor → Integrações → Webhooks**, crie um webhook, selecione esse canal e dê um nome como `Coletor de ônibus`. Também é possível acessar as integrações pelas configurações do canal. Sua conta precisa da permissão de gerenciar webhooks. Copie a URL e salve somente em `.env`:
 
 ```dotenv
 COLLECTION_ALERT_WEBHOOK=https://discord.com/api/webhooks/SEU_ID/SEU_TOKEN
@@ -115,7 +115,7 @@ Também é possível usar `uv run --package amarelo-api python -m api.collection
 Após alterar o `.env`, reinicie o processo do coletor. No Compose, recrie o serviço para carregar as variáveis:
 
 ```bash
-docker compose --env-file apps/api/.env --env-file apps/web/.env --profile coleta up -d --build collector
+docker compose --profile coleta up -d --build collector
 ```
 
 O modo `generic` preserva os campos originais do alerta de falha, acrescenta diagnóstico opcional e passa a emitir também o evento de recuperação descrito acima. A URL é uma credencial; quem a possui pode publicar no canal. Não a exponha em prints, commits ou logs.
@@ -167,3 +167,31 @@ respostas válidas e não equivale a viagem cancelada. O mapa usa seu adaptador 
 A guarda imutável (US12), publicação (US09) e relatório (US13) continuam processos
 próprios; os atalhos da tela não executam esses processos. Configure e execute o
 coletor conforme as seções anteriores antes de esperar novos ciclos no painel.
+
+### Incidentes e recuperação no painel (US29)
+
+Cada ciclo mostra diagnóstico com vocabulário sanitizado (mesmas regras dos alertas),
+rodadas de consulta/retentativa e coleta preservada, quando esses dados foram gravados.
+O início de uma sequência incompleta é a primeira falha registrada após o último
+sucesso integral; a recuperação é o primeiro sucesso integral posterior. Duração
+observada não reconstrói períodos sem processo e não comprova indisponibilidade
+contínua da SPTrans. Ciclos sem diagnóstico não recebem contagens inventadas.
+
+A confirmação de envio vem de `alerted_at`/`recovery_alerted_at` do ciclo ao qual
+o alerta foi associado; não é repetida em todos os ciclos do mesmo incidente.
+Sem confirmação, o estado é desconhecido/sem evidência: a implementação anterior
+não persiste todas as tentativas malsucedidas de entrega. A configuração atual da
+API é indicada separadamente e pode diferir do ambiente do coletor. Nenhum endpoint
+deste painel envia mensagens ou provoca falhas. A simulação automatizada usa schema
+PostgreSQL isolado e não altera ciclos reais nem chama webhook.
+
+### Aviso público de cobertura
+
+Mapa, downloads e confiabilidade apresentam um resumo público de
+`GET /collection/coverage`, sem autenticação, com atualização a cada 30 segundos.
+O resumo lê apenas o último ciclo concluído da coleta histórica, informa seu
+horário e identifica garagens cuja consulta falhou, sem publicar URLs, corpos,
+credenciais ou configuração de alertas. Ciclos de mais de 180 segundos são
+explicitamente antigos; sem banco ou evidência a cobertura é desconhecida.
+O aviso não certifica outros períodos ou arquivos e não altera posições,
+indicadores ou contagens. A consulta do mapa ao vivo continua independente.

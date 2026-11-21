@@ -1,3 +1,4 @@
+import CollectionCoverage from "./CollectionCoverage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BusMap from "./components/BusMap";
 import RouteFocusPanel from "./components/RouteFocusPanel";
@@ -277,6 +278,7 @@ export default function MapPage() {
           <span className="public-label">Mapa público</span>
         </header>
         <div className="explorer-body">
+          <CollectionCoverage />
           <h1>A rede, em movimento.</h1>
           <p className="intro">
             Explore áreas, compare linhas e acompanhe a operação.

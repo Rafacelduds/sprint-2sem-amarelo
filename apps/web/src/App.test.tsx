@@ -1,3 +1,4 @@
+vi.mock("./CollectionCoverage", () => ({ default: () => null }));
 import {
   act,
   cleanup,

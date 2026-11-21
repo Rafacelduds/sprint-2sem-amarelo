@@ -1,3 +1,4 @@
+vi.mock("./CollectionCoverage", () => ({ default: () => null }));
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import ExportsPage from "./ExportsPage";

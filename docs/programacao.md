@@ -72,7 +72,7 @@ conferida com a própria fonte.
 Configure o S3 conforme o README e aplique as migrações da US02 se consumir seu
 catálogo. O bucket precisa existir e ter versionamento habilitado; no ambiente
 local, `uv run --package amarelo-api python -m api.storage init` prepara isso.
-`SCHEDULE_SOURCE_URL` em `apps/api/.env` permite uma origem de teste. Não use
+`SCHEDULE_SOURCE_URL` em `.env` permite uma origem de teste. Não use
 credenciais reais em simulações.
 
 ```bash

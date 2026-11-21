@@ -72,3 +72,48 @@ async def test_collection_restart_counts_and_staleness(
             assert data["cycles"][0]["collected_at"]
     finally:
         get_settings.cache_clear()
+
+
+async def test_simulated_failure_recovery_is_persistent_and_sanitized(
+    sessions: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Simulação em schema isolado: nenhum envio externo ou alteração de ciclos reais."""
+    from api.collection.diagnostics import CycleDiagnostics
+
+    monkeypatch.setenv("OPERATIONS_TOKEN", "test-operations")
+    get_settings.cache_clear()
+    store = PostgresStore(sessions)
+    failure = await store.start(datetime.now(UTC) - timedelta(minutes=12))
+    await store.record_diagnostics(
+        failure,
+        CycleDiagnostics(
+            status="origin_failure",
+            rounds=6,
+            road_saved=True,
+            failures={"road": "https://secret.invalid/private-token:http_500"},
+        ),
+    )
+    await store.finish(failure, "origin_failure")
+    try:
+        for recovered in (False, True):
+            if recovered:
+                success = await store.start(datetime.now(UTC))
+                await store.finish(success, "success")
+            app = create_app()
+            app.dependency_overrides[get_sessions] = lambda: sessions
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app), base_url="http://test"
+            ) as c:
+                response = await c.get(
+                    "/operations/collection", headers={"Authorization": "Bearer test-operations"}
+                )
+                failed = next(row for row in response.json()["cycles"] if row["id"] == str(failure))
+                assert bool(failed["recovered_at"]) == recovered
+                assert failed["outage_seconds"] >= 720
+                assert "HTTP 500" in str(failed["diagnostics"])
+                assert "5 rodadas de retentativa" in str(failed["diagnostics"])
+                assert "secret.invalid" not in response.text
+                assert "private-token" not in response.text
+                assert failed["alert_delivered_at"] is None
+    finally:
+        get_settings.cache_clear()

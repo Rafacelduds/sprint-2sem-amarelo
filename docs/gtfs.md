@@ -13,8 +13,8 @@ preservando as revisões publicadas e as tabelas de brutos.
 
 ## Configuração e execução
 
-Siga a instalação do [README](../README.md) e configure `apps/api/.env` a partir
-de [apps/api/.env.example](../apps/api/.env.example). Para a captura automática, `GTFS_SOURCE_URL`
+Siga a instalação do [README](../README.md) e configure `.env` a partir
+de [.env.example](../.env.example). Para a captura automática, `GTFS_SOURCE_URL`
 recebe o link direto do ZIP, não uma página de login nem o caminho do arquivo local:
 
 ```dotenv
@@ -67,16 +67,16 @@ Como alternativa dentro da imagem da API, depois de construí-la e aplicar as
 migrações, execute um container independente (não inicia o servidor HTTP):
 
 ```bash
-docker compose run --rm --no-deps --env-from-file apps/api/.env -e PYTHONPATH=/workspace/apps/api/src api .venv/bin/python -m api.gtfs --once
+docker compose run --rm --no-deps -e PYTHONPATH=/workspace/apps/api/src api .venv/bin/python -m api.gtfs --once
 ```
 
-Nesse container, mantenha `postgres`/`s3` como hosts; o comando acima é pontual.
+O Compose já fornece os hosts internos `postgres`/`s3`; o comando acima é pontual.
 Para captura contínua separada da API, o profile `gtfs` faz a primeira captura
 imediatamente e repete a cada `GTFS_INTERVAL_SECONDS` (padrão diário), com
-retentativa após falha. Depois de configurar os arquivos de ambiente para Docker:
+retentativa após falha. Depois de configurar o `.env` da raiz:
 
 ```bash
-docker compose --env-file apps/api/.env --env-file apps/web/.env --profile gtfs up --build -d gtfs
+docker compose --profile gtfs up --build -d gtfs
 ```
 
 O profile é opcional; iniciar somente API/web não ativa coleta GTFS. Para uma
@@ -84,18 +84,9 @@ captura pontual com a mesma configuração: substitua `up --build -d gtfs` por
 `run --rm gtfs .venv/bin/python -m api.gtfs --once`. O serviço usa o mesmo bucket,
 banco e fonte das posições. Não confundir `localhost` do host com os nomes
 `postgres`/`s3` dentro dos containers. No frontend Docker, prefira `VITE_API_URL=/api`.
-Ao usar PowerShell com `.env` preparados para execução pelo host, sobrescritas
-temporárias evitam editar configurações locais:
-
-```powershell
-$env:DATABASE_URL='postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo'
-$env:S3_ENDPOINT_URL='http://s3:4566'
-$env:VITE_API_URL='/api'
-docker compose --env-file apps/api/.env --env-file apps/web/.env up --build -d api web
-```
-
-Esses valores de banco são apenas os padrões de desenvolvimento do Compose.
-Adapte às credenciais locais sem versioná-las. Os scripts `.sh` precisam de LF,
+Não é necessário sobrescrever URLs ao trocar entre host e Docker: o Compose
+usa seus destinos internos. Sobrescritas opcionais `COMPOSE_*` estão no README.
+Os scripts `.sh` precisam de LF,
 definido em `.gitattributes`: CRLF impede `init-s3.sh` de criar o bucket no Linux.
 Se o LocalStack já iniciou com esse erro, normalize o arquivo para LF e execute
 `docker compose exec s3 bash /etc/localstack/init/ready.d/init-s3.sh`, sem remover

@@ -28,9 +28,9 @@ O Vite encaminha `/api/*` para a API, removendo `/api`. A tela inicial exibe pos
 
 O contrato HTTP parte dos modelos e rotas da API. Ao alterá-lo, exporte o OpenAPI e regenere o cliente conforme o [README](../README.md#openapi-e-cliente-typescript); não edite manualmente os arquivos gerados. O `openapi.json` é um artefato local ignorado pelo Git.
 
-As configurações privadas ficam em `apps/api/.env`, com exemplo em
-[`apps/api/.env.example`](../apps/api/.env.example); as públicas do Vite ficam em
-`apps/web/.env`. Em AWS, o armazenamento aceita a identidade IAM do processo.
+A configuração única fica no `.env` da raiz, com exemplo em
+[`.env.example`](../.env.example). API, coletores, Compose e Vite usam essa fonte;
+apenas variáveis `VITE_*` são públicas. Em AWS, o armazenamento aceita a identidade IAM do processo.
 Comandos de instalação, migrações e testes ficam centralizados no README.
 
 ## Mapa ao vivo — US22

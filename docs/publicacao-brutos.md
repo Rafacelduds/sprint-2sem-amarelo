@@ -99,7 +99,7 @@ Ou configure `APP_CODE_VERSION` com o commit completo na configuração usada pe
 Compose e execute:
 
 ```bash
-docker compose --env-file apps/api/.env --env-file apps/web/.env --profile arquivo --profile publicacao up -d --build archiver raw-publisher
+docker compose --profile arquivo --profile publicacao up -d --build archiver raw-publisher
 ```
 
 O código exige 40 caracteres hexadecimais, sem valor presumido. Em produção,

@@ -153,6 +153,10 @@ export type CatalogLine = {
  */
 export type CollectionStatus = {
     /**
+     * Alert Configured Now
+     */
+    alert_configured_now: boolean;
+    /**
      * Checked At
      */
     checked_at: string;
@@ -176,6 +180,40 @@ export type CollectionStatus = {
      * Cycles
      */
     cycles: Array<CycleView>;
+};
+
+/**
+ * CoverageView
+ */
+export type CoverageView = {
+    /**
+     * Checked At
+     */
+    checked_at: string;
+    /**
+     * Cycle At
+     */
+    cycle_at: string | null;
+    /**
+     * Status
+     */
+    status: 'complete' | 'partial' | 'unknown';
+    /**
+     * Stale
+     */
+    stale: boolean;
+    /**
+     * Failed Garage Companies
+     */
+    failed_garage_companies: Array<number>;
+    /**
+     * Road Saved
+     */
+    road_saved: boolean | null;
+    /**
+     * Garages Saved
+     */
+    garages_saved: number | null;
 };
 
 /**
@@ -210,6 +248,32 @@ export type CycleView = {
      * Collected At
      */
     collected_at: string | null;
+    /**
+     * Diagnostics
+     */
+    diagnostics: {
+        [key: string]: string;
+    };
+    /**
+     * Failure Started At
+     */
+    failure_started_at: string | null;
+    /**
+     * Recovered At
+     */
+    recovered_at: string | null;
+    /**
+     * Outage Seconds
+     */
+    outage_seconds: number | null;
+    /**
+     * Alert Delivered At
+     */
+    alert_delivered_at: string | null;
+    /**
+     * Recovery Alert Delivered At
+     */
+    recovery_alert_delivered_at: string | null;
 };
 
 /**
@@ -1598,3 +1662,19 @@ export type CollectionStatusOperationsCollectionGetResponses = {
 };
 
 export type CollectionStatusOperationsCollectionGetResponse = CollectionStatusOperationsCollectionGetResponses[keyof CollectionStatusOperationsCollectionGetResponses];
+
+export type CoverageCollectionCoverageGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/collection/coverage';
+};
+
+export type CoverageCollectionCoverageGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CoverageView;
+};
+
+export type CoverageCollectionCoverageGetResponse = CoverageCollectionCoverageGetResponses[keyof CoverageCollectionCoverageGetResponses];

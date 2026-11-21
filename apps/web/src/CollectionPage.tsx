@@ -12,12 +12,22 @@ function Status({ data }: { data: CollectionStatus }) {
   return <section className="backups-card"><h2>Coleta persistida</h2>
     <strong>{data.recent_activity ? "Atividade recente registrada" : "Coletor inativo ou atrasado"}</strong>
     <p>Atividade recente indica ciclos no banco; não confirma que o processo continua ativo. Limite: {data.activity_timeout_seconds} segundos.</p>
+    <p>Destino de alerta na configuração atual da API: {data.alert_configured_now ? "Configurado; não comprova envio nem configuração do processo coletor" : "Não configurado"}.</p>
     <p>Último sucesso integral: {instant(data.last_success_at)}</p>
     <p>Idade da atividade: {data.age_seconds === null ? "Sem informação" : `${Math.floor(data.age_seconds)} segundos`}</p>
     <p>O mapa consulta um adaptador ao vivo separado. Veículos no mapa não comprovam histórico gravado. Contagens abaixo são registros novos, após deduplicação.</p>
     {!data.cycles.length ? <p>Nenhum ciclo persistido.</p> : <ul className="backups-points">{data.cycles.map(cycle => <li key={cycle.id}>
       <strong>{cycle.status === "success" ? "Sucesso integral" : cycle.status === "running" ? "Sem conclusão registrada" : "Ciclo incompleto / interrompido"}</strong>
       <p>ID: <code>{cycle.id}</code></p>
+      {cycle.failure_started_at && <>
+        <p>{cycle.recovered_at ? "Incidente recuperado" : "Falha sem recuperação integral registrada"} · Início: {instant(cycle.failure_started_at)} · Recuperação: {instant(cycle.recovered_at)}</p>
+        <p>Duração observada: {cycle.outage_seconds === null ? "Desconhecida" : `${Math.floor(cycle.outage_seconds)} segundos`}. Inclui somente a evidência dos ciclos registrados.</p>
+      </>}
+      <p>Alerta deste ciclo: {cycle.alert_delivered_at ? `Envio confirmado em ${instant(cycle.alert_delivered_at)}` : "Sem confirmação de envio; configuração e eventual falha de entrega não registradas neste ciclo"}.</p>
+      {cycle.recovery_alert_delivered_at && <p>Alerta de recuperação enviado em {instant(cycle.recovery_alert_delivered_at)}.</p>}
+      {Object.entries(cycle.diagnostics).map(([label, value]) => <div key={label}><h3>{label}</h3><p style={{ whiteSpace: "pre-line" }}>{value}</p></div>)}
+      {!Object.keys(cycle.diagnostics).length && <p>Diagnóstico detalhado indisponível para este ciclo.</p>}
+      <p>Lacuna de coleta não comprova viagem cancelada. Origem indisponível e falha de armazenamento são causas distintas.</p>
       <p>Início: {instant(cycle.scheduled_at)} · Fim: {instant(cycle.finished_at)}</p>
       <p>Última captura: {instant(cycle.collected_at)} · {cycle.snapshots} respostas · {cycle.positions} posições novas</p>
     </li>)}</ul>}
@@ -32,12 +42,15 @@ function Panel({ token, onLock }: { token: string; onLock: () => void }) {
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
+    let poll: ReturnType<typeof setTimeout> | undefined;
     const timeout = setTimeout(() => controller.abort(), 20_000);
     void getCollection(request.token, controller.signal)
       .then((data) => { if (active) setResult({ request, data }); })
       .catch((error: unknown) => { if (active) setResult({ request, error: error instanceof Error && error.message === "unauthorized" ? "unauthorized" : "unavailable" }); })
-      .finally(() => clearTimeout(timeout));
-    const poll = setTimeout(() => setRequest({ ...request, revision: request.revision + 1 }), 15_000);
+      .finally(() => {
+        clearTimeout(timeout);
+        if (active) poll = setTimeout(() => setRequest({ ...request, revision: request.revision + 1 }), 15_000);
+      });
     return () => { clearTimeout(poll); active = false; clearTimeout(timeout); controller.abort(); };
   }, [request]);
   return <>

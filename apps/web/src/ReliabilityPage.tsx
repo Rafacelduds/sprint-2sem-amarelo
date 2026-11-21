@@ -1,3 +1,4 @@
+import CollectionCoverage from "./CollectionCoverage";
 import { useEffect, useState } from "react";
 import { getReliability, type ReliabilityReport, type ReportResult } from "./api/reliability";
 import "./ReliabilityPage.css";
@@ -161,6 +162,7 @@ export default function ReliabilityPage() {
   }, [request, valid]);
   return (
     <main className="reliability-page">
+      <CollectionCoverage />
       <header className="reliability-intro">
         <span className="reliability-eyebrow">DADOS ABERTOS · QUALIDADE</span>
         <h1>Confiabilidade da coleta</h1>
