@@ -1,0 +1,33 @@
+.exports-page { max-width: 1240px; margin: auto; padding: 42px 28px 64px; }
+.exports-intro { max-width: 760px; margin-bottom: 26px; }
+.exports-intro h1 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -1px; margin: 12px 0; }
+.exports-intro p, .exports-help { line-height: 1.6; color: #526b65; }
+.exports-eyebrow { font-size: 11px; font-weight: 750; letter-spacing: 1.5px; color: #326b61; }
+.exports-toolbar { display: flex; align-items: center; gap: 20px; margin-bottom: 26px; }
+.exports-toolbar p { font-size: 13px; margin: 0; }
+.exports-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.exports-publication, .exports-dictionary { background: white; border: 1px solid #dbe5df; border-radius: 12px; padding: 24px; min-width: 0; }
+.exports-publication-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.exports-publication h2 { margin: 8px 0 24px; font-size: 28px; }
+.exports-badge { border-radius: 20px; padding: 7px 12px; background: #f4efdf; font-size: 12px; color: #6b541a; }
+.exports-metadata { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.exports-page dt { font-size: 12px; color: #526b65; margin-bottom: 6px; }
+.exports-page dd { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+.exports-provenance > div, .exports-dictionary dl > div { border-top: 1px solid #e6ece9; padding: 14px 0; }
+.exports-page code { font-size: 12px; overflow-wrap: anywhere; }
+.exports-page p { line-height: 1.6; }
+.exports-notice { padding: 16px; background: #edf3ef; border-radius: 8px; }
+.exports-page [role="alert"] { color: #8c3223; }
+.exports-primary { background: #164d46; color: white; margin-right: 10px; }
+.exports-primary:hover { background: #23675d; }
+.exports-day { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-size: 14px; font-weight: 650; }
+.exports-day select { padding: 10px; border: 1px solid #bdceca; border-radius: 7px; background: white; color: inherit; }
+.exports-pagination { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.exports-page button:disabled { opacity: .55; cursor: default; }
+@media (max-width: 850px) { .exports-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) {
+  .exports-page { padding: 28px 14px; }
+  .exports-toolbar { align-items: start; flex-direction: column; gap: 12px; }
+  .exports-publication, .exports-dictionary { padding: 18px; }
+  .exports-metadata { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+}

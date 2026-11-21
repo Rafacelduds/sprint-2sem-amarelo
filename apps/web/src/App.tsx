@@ -3,6 +3,7 @@ import MapPage from "./MapPage";
 import DocumentsPage from "./DocumentsPage";
 import SchedulesPage from "./SchedulesPage";
 import ReliabilityPage from "./ReliabilityPage";
+import ExportsPage from "./ExportsPage";
 import "./Navigation.css";
 
 function subscribe(listener: () => void) {
@@ -12,12 +13,13 @@ function subscribe(listener: () => void) {
 
 export default function App() {
   const page = useSyncExternalStore(subscribe, () =>
-    window.location.hash === "#programacao" ? "schedules"
+    window.location.hash === "#dados-brutos" ? "exports"
+      : window.location.hash === "#programacao" ? "schedules"
       : window.location.hash === "#confiabilidade" ? "reliability"
       : window.location.hash === "#acervo" ? "documents" : "map",
   );
   useEffect(() => {
-    document.title = `ObservaÔnibus — ${page === "schedules" ? "Programação das linhas" : page === "reliability" ? "Confiabilidade da coleta" : page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
+    document.title = `ObservaÔnibus — ${page === "exports" ? "Dados brutos em Parquet" : page === "schedules" ? "Programação das linhas" : page === "reliability" ? "Confiabilidade da coleta" : page === "documents" ? "Acervo documental" : "Mapa ao vivo"}`;
   }, [page]);
   return (
     <>
@@ -39,9 +41,10 @@ export default function App() {
           <a href="#confiabilidade" aria-current={page === "reliability" ? "page" : undefined}>
             Confiabilidade
           </a>
+          <a href="#dados-brutos" aria-current={page === "exports" ? "page" : undefined}>Dados brutos</a>
         </div>
       </nav>
-      {page === "schedules" ? <SchedulesPage /> : page === "reliability" ? <ReliabilityPage /> : page === "documents" ? <DocumentsPage /> : <MapPage />}
+      {page === "exports" ? <ExportsPage /> : page === "schedules" ? <SchedulesPage /> : page === "reliability" ? <ReliabilityPage /> : page === "documents" ? <DocumentsPage /> : <MapPage />}
     </>
   );
 }

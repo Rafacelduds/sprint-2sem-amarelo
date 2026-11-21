@@ -33,6 +33,36 @@ horário GPS. O fuso acompanha as regras históricas, inclusive horário de ver�
 
 ## Acesso público
 
+Na aplicação, abra **Dados brutos** (`#dados-brutos`). A tela consulta o catálogo
+público, mostra até 31 dias por página e permite escolher um dia realmente
+publicado. Antes do download apresenta publicação, prazo da revisão atual,
+quantidade de respostas, tamanho, fonte, licença, fuso, cobertura e SHA-256.
+O dicionário é consultado na API, independentemente do catálogo.
+
+O download depende de uma ação explícita. A tela trata falhas, permite repetir ou
+cancelar e recusa respostas com tipo, tamanho ou ETag divergentes do item
+selecionado. Se houver republicação durante a consulta, atualize o catálogo antes
+de baixar. A verificação criptográfica dos bytes é feita no servidor; a tela
+compara o ETag com o SHA-256 anunciado e o tamanho recebido, sem apresentar essa
+comparação como um novo cálculo de hash no navegador. A conclusão informa que o
+arquivo foi recebido, sem afirmar que o usuário já o salvou em disco.
+
+Quando `VITE_API_URL` aponta diretamente para uma API em outra origem, configure
+essa origem do frontend em `CORS_ORIGINS`. A API expõe `ETag` nas respostas CORS
+para permitir a mesma conferência de revisão usada com o proxy; isso não libera
+origens fora da lista configurada.
+
+O navegador recebe o arquivo completo como Blob antes de iniciar o salvamento;
+considere memória disponível ao baixar dias grandes, especialmente no celular.
+O ensaio desta interface usou um arquivo de 416.784 bytes, não um dia completo de
+coleta. Para volumes que excedam o navegador, use o endpoint de download com um
+cliente que grave diretamente em disco. A interface não altera os limites do
+servidor descritos abaixo.
+
+Atualizar a tela apenas consulta o catálogo: não aciona coleta, arquivamento nem
+publicação. Arquivo presente não comprova coleta completa. Evidência e limitações
+do ensaio com capturas reais em [validação do frontend](evidencias/2026-11-20-us09-frontend.md).
+
 Sem login, na API e na documentação Swagger `/docs`:
 
 | Rota | Resultado |
