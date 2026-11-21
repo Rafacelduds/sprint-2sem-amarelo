@@ -1,3 +1,4 @@
+import CollectionCoverage from "./CollectionCoverage";
 import { useEffect, useRef, useState } from "react";
 import { downloadExport, getDictionary, getExports, pageSize, saveExport, type ExportInfo } from "./api/exports";
 import "./ExportsPage.css";
@@ -99,6 +100,7 @@ export default function ExportsPage() {
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [request]);
   return <main className="exports-page">
+      <CollectionCoverage />
     <header className="exports-intro"><span className="exports-eyebrow">DADOS ABERTOS · SEM LOGIN</span>
       <h1>Dados brutos em Parquet</h1>
       <p>Escolha um dia publicado para consultar a origem e baixar as respostas preservadas da API Olho Vivo.</p>

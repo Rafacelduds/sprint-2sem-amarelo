@@ -184,3 +184,14 @@ não persiste todas as tentativas malsucedidas de entrega. A configuração atua
 API é indicada separadamente e pode diferir do ambiente do coletor. Nenhum endpoint
 deste painel envia mensagens ou provoca falhas. A simulação automatizada usa schema
 PostgreSQL isolado e não altera ciclos reais nem chama webhook.
+
+### Aviso público de cobertura
+
+Mapa, downloads e confiabilidade apresentam um resumo público de
+`GET /collection/coverage`, sem autenticação, com atualização a cada 30 segundos.
+O resumo lê apenas o último ciclo concluído da coleta histórica, informa seu
+horário e identifica garagens cuja consulta falhou, sem publicar URLs, corpos,
+credenciais ou configuração de alertas. Ciclos de mais de 180 segundos são
+explicitamente antigos; sem banco ou evidência a cobertura é desconhecida.
+O aviso não certifica outros períodos ou arquivos e não altera posições,
+indicadores ou contagens. A consulta do mapa ao vivo continua independente.

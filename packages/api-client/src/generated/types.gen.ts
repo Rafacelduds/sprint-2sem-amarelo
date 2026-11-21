@@ -183,6 +183,40 @@ export type CollectionStatus = {
 };
 
 /**
+ * CoverageView
+ */
+export type CoverageView = {
+    /**
+     * Checked At
+     */
+    checked_at: string;
+    /**
+     * Cycle At
+     */
+    cycle_at: string | null;
+    /**
+     * Status
+     */
+    status: 'complete' | 'partial' | 'unknown';
+    /**
+     * Stale
+     */
+    stale: boolean;
+    /**
+     * Failed Garage Companies
+     */
+    failed_garage_companies: Array<number>;
+    /**
+     * Road Saved
+     */
+    road_saved: boolean | null;
+    /**
+     * Garages Saved
+     */
+    garages_saved: number | null;
+};
+
+/**
  * CycleView
  */
 export type CycleView = {
@@ -1628,3 +1662,19 @@ export type CollectionStatusOperationsCollectionGetResponses = {
 };
 
 export type CollectionStatusOperationsCollectionGetResponse = CollectionStatusOperationsCollectionGetResponses[keyof CollectionStatusOperationsCollectionGetResponses];
+
+export type CoverageCollectionCoverageGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/collection/coverage';
+};
+
+export type CoverageCollectionCoverageGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CoverageView;
+};
+
+export type CoverageCollectionCoverageGetResponse = CoverageCollectionCoverageGetResponses[keyof CoverageCollectionCoverageGetResponses];

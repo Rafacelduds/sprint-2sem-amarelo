@@ -57,6 +57,15 @@ uv sync --all-packages --all-groups --frozen
 npm ci
 ```
 
+Não mantenha um `.env` na raiz: ele é legado e pode ser carregado implicitamente
+pelo Compose com valores diferentes dos usados pela API. Ao migrar, preserve uma
+cópia privada fora dos caminhos de carregamento, compare variáveis e transfira as
+do backend para `apps/api/.env` e somente as `VITE_*` para `apps/web/.env`.
+Não sobrescreva os arquivos existentes com os exemplos: reconcilie os valores,
+preserve credenciais e mantenha apenas um alias de token (preferencialmente
+`CHAVE_API_OLHO_VIVO`). Nunca coloque segredos em `VITE_*`, pois vão ao navegador.
+Versione somente os `.env.example`; compartilhe valores privados por canal seguro.
+
 Os arquivos de ambiente ficam em cada aplicação: `apps/api/.env` contém as
 configurações do backend e dos serviços; `apps/web/.env` contém as variáveis
 `VITE_*` do frontend. Copie os respectivos `.env.example` se ainda não tiver esses
