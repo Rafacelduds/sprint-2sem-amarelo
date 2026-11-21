@@ -62,7 +62,7 @@ dia com `--day`: o modo contínuo atualiza somente ontem e hoje. Pode ser inicia
 com o profile Compose `relatorios`, seguindo os arquivos de ambiente do README:
 
 ```bash
-docker compose --env-file apps/api/.env --env-file apps/web/.env --profile relatorios up --build -d reliability
+docker compose --profile relatorios up --build -d reliability
 ```
 
 Esse comando é uma instrução de operação; adicionar o profile não o ativa.

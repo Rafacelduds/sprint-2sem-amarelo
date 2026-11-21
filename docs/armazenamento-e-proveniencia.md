@@ -109,7 +109,7 @@ registra suas próprias versões e saídas, sem substituir a execução anterior
 ## Operação e evidência
 
 Comandos na raiz, depois das migrações. Para executar Python pelo host, configure
-os hosts locais em `apps/api/.env`, conforme o README. Em AWS omita endpoint e
+os hosts locais em `.env`, conforme o README. Em AWS omita endpoint e
 chaves explícitas para usar a identidade IAM do processo.
 
 ```bash
@@ -120,7 +120,7 @@ uv run --package amarelo-api python -m api.storage import-history --path /caminh
 uv run --package amarelo-api python -m api.storage inventory --dataset gps-maio-2026 --code-version COMMIT_COMPLETO --period-start 2026-05-01T00:00:00+00:00 --period-end 2026-06-01T00:00:00+00:00
 uv run --package amarelo-api python -m api.storage replay-inventory --manifest-key manifests/UUID.json
 uv run --package amarelo-api python -m api.storage record-manifest --path manifesto.json
-docker compose --env-file apps/api/.env --env-file apps/web/.env --profile arquivo up -d --build archiver
+docker compose --profile arquivo up -d --build archiver
 ```
 
 `inventory` e `replay-inventory` demonstram uma transformação técnica determinística

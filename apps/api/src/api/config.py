@@ -11,7 +11,7 @@ OLHO_VIVO_TOKEN_ALIASES = AliasChoices(
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=Path(__file__).resolve().parents[2] / ".env", extra="ignore", env_ignore_empty=True
+        env_file=Path(__file__).resolve().parents[4] / ".env", extra="ignore", env_ignore_empty=True
     )
 
     olho_vivo_token: SecretStr = Field(

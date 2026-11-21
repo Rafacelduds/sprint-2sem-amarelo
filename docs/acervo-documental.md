@@ -69,7 +69,7 @@ Exemplo PowerShell, executado na raiz do repositório, com arquivos fora do cód
 
 ```powershell
 $documentos = (Resolve-Path '../Dados_GPS_Onibus/Licitação + Contratos').Path
-docker compose --env-file apps/api/.env --env-file apps/web/.env run --rm --no-deps `
+docker compose run --rm --no-deps `
   -e PYTHONPATH=/workspace/apps/api/src -v "${documentos}:/input:ro" `
   api .venv/bin/python -m api.documents register `
   --file '/input/IQT.GSO.005.00 - Ficha Técnica do Indicador ICF.pdf' `

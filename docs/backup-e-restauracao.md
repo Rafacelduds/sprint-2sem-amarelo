@@ -98,12 +98,12 @@ tentativa malsucedida e rotina sem sinal são estados distintos. Evidência real
 incluindo backup do Parquet da US09 e reinício da API, em
 [ensaio do painel](evidencias/2026-11-20-us32-painel.md).
 
-Configure `apps/api/.env` pelo exemplo. Para comandos Python no host use
+Configure `.env` pelo exemplo. Para comandos Python no host use
 `localhost:4566` no S3 principal, `localhost:4567` no backup e o host local no
 `DATABASE_URL`. O código não registra URLs de conexão nem credenciais.
 
 ```bash
-docker compose --env-file apps/api/.env --env-file apps/web/.env --profile backup up -d postgres s3 s3-backup
+docker compose --profile backup up -d postgres s3 s3-backup
 uv run --package amarelo-api alembic -c apps/api/alembic.ini upgrade head
 uv run --package amarelo-api python -m api.backup init
 export APP_CODE_VERSION=$(git rev-parse HEAD)
@@ -116,9 +116,9 @@ A imagem dedicada já contém os clientes e permite operação sem instalar no h
 
 ```bash
 export APP_CODE_VERSION=$(git rev-parse HEAD)
-docker compose --env-file apps/api/.env --env-file apps/web/.env --profile backup up -d --build backup
+docker compose --profile backup up -d --build backup
 docker compose logs -f backup
-docker compose --env-file apps/api/.env --env-file apps/web/.env run --rm --no-deps backup .venv/bin/python -m api.backup run
+docker compose run --rm --no-deps backup .venv/bin/python -m api.backup run
 ```
 
 No desenvolvimento, também é possível usar os clientes do container PostgreSQL:

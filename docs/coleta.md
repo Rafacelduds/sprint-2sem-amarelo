@@ -4,8 +4,8 @@ Implementação da [US01](https://trello.com/c/MuuQFXEX) e da [US29](https://tre
 
 ## Configuração e execução
 
-Mantenha `apps/api/.env` privado, organizado como `apps/api/.env.example`.
-Use os dois `--env-file` do README nos comandos Compose. O coletor aceita
+Mantenha `.env` privado, organizado como `.env.example`.
+O Compose lê automaticamente o `.env` da raiz. O coletor aceita
 `CHAVE_API_OLHO_VIVO`, `OLHOVIVO_TOKEN` e `OLHO_VIVO_TOKEN`, nessa ordem de
 precedência, compartilhada com o mapa. Valores vazios são ignorados; configure
 apenas um dos nomes. Nunca use `VITE_*` para credenciais.
@@ -83,7 +83,7 @@ Só uma resposta HTTP bem-sucedida marca `alerted_at`. Falha ou ausência de des
 
 ## Configurar os alertas no Discord
 
-No Discord, crie um servidor do projeto e um canal de **texto comum** chamado `alertas-coleta`. Em **Configurações do servidor → Integrações → Webhooks**, crie um webhook, selecione esse canal e dê um nome como `Coletor de ônibus`. Também é possível acessar as integrações pelas configurações do canal. Sua conta precisa da permissão de gerenciar webhooks. Copie a URL e salve somente em `apps/api/.env`:
+No Discord, crie um servidor do projeto e um canal de **texto comum** chamado `alertas-coleta`. Em **Configurações do servidor → Integrações → Webhooks**, crie um webhook, selecione esse canal e dê um nome como `Coletor de ônibus`. Também é possível acessar as integrações pelas configurações do canal. Sua conta precisa da permissão de gerenciar webhooks. Copie a URL e salve somente em `.env`:
 
 ```dotenv
 COLLECTION_ALERT_WEBHOOK=https://discord.com/api/webhooks/SEU_ID/SEU_TOKEN
@@ -115,7 +115,7 @@ Também é possível usar `uv run --package amarelo-api python -m api.collection
 Após alterar o `.env`, reinicie o processo do coletor. No Compose, recrie o serviço para carregar as variáveis:
 
 ```bash
-docker compose --env-file apps/api/.env --env-file apps/web/.env --profile coleta up -d --build collector
+docker compose --profile coleta up -d --build collector
 ```
 
 O modo `generic` preserva os campos originais do alerta de falha, acrescenta diagnóstico opcional e passa a emitir também o evento de recuperação descrito acima. A URL é uma credencial; quem a possui pode publicar no canal. Não a exponha em prints, commits ou logs.

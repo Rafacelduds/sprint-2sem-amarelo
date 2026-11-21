@@ -58,6 +58,20 @@ de captura, vigência histórica e corte operacional continuam pendentes.
 Contrato em [programacao.md](programacao.md) e detalhes da
 [conferência](evidencias/2026-11-19-us04.md).
 
+## D006 — Configuração única na raiz
+
+**Data/status:** 21/11/2026, escolha solicitada por Victor; implementação no PR #25
+aguardando revisão independente. Centralizar em um `.env` e um `.env.example` na
+raiz reduz divergências entre Compose, API e frontend, incluindo o caso observado
+de token presente em um arquivo e ausente no arquivo efetivamente lido.
+
+API e coletores usam caminho absoluto para a raiz; Vite usa `envDir` na raiz e
+expõe somente `VITE_*`. Compose carrega a configuração automaticamente e mantém
+endereços internos separados dos destinos `localhost` usados no host. O comando
+habitual passa a ser `docker compose up --build`, sem `--env-file` adicionais.
+Credenciais e backups ficam fora do Git e do contexto de build. A migração exige
+comparar valores existentes; não copiar o exemplo sobre um arquivo preenchido.
+
 ## Como registrar a próxima
 
 Use ID sequencial e título. Em poucos parágrafos, informe **data e status** (proposta, aprovada, rejeitada ou substituída), **problema**, **escolha e motivo**, **consequências** e **fonte/aprovação** (pessoa, US, PR ou documento). Mencione alternativas apenas quando explicarem uma escolha relevante. Se substituir uma decisão, preserve o registro anterior e vincule a nova.

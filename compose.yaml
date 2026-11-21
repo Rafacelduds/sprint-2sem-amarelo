@@ -61,6 +61,9 @@ services:
       - ./infra/localstack/init-s3.sh:/etc/localstack/init/ready.d/init-s3.sh:ro
 
   backup:
+    env_file:
+      - path: ./.env
+        required: false
     profiles: [backup]
     build:
       context: .
@@ -71,13 +74,13 @@ services:
         target: /run/configs/storage-restore-map.json
     environment:
       S3_RESTORE_MAP: /run/configs/storage-restore-map.json
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-amarelo}:${POSTGRES_PASSWORD:-amarelo}@postgres:5432/${POSTGRES_DB:-amarelo}}
+      S3_ENDPOINT_URL: ${COMPOSE_S3_ENDPOINT_URL:-http://s3:4566}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
       S3_BUCKET: ${S3_BUCKET:-raw-data}
       S3_REGION: ${S3_REGION:-us-east-1}
-      BACKUP_S3_ENDPOINT_URL: ${BACKUP_S3_ENDPOINT_URL:-http://s3-backup:4566}
+      BACKUP_S3_ENDPOINT_URL: ${COMPOSE_BACKUP_S3_ENDPOINT_URL:-http://s3-backup:4566}
       BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-test}
       BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-test}
       BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-backup-data}
@@ -93,13 +96,13 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     env_file:
-      - path: ./apps/api/.env
+      - path: ./.env
         required: false
     environment:
       CHAVE_API_OLHO_VIVO: ${CHAVE_API_OLHO_VIVO:-${OLHOVIVO_TOKEN:-${OLHO_VIVO_TOKEN:-}}}
       S3_RESTORE_MAP: /run/configs/storage-restore-map.json
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-amarelo}:${POSTGRES_PASSWORD:-amarelo}@postgres:5432/${POSTGRES_DB:-amarelo}}
+      S3_ENDPOINT_URL: ${COMPOSE_S3_ENDPOINT_URL:-http://s3:4566}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
       S3_BUCKET: ${S3_BUCKET:-raw-data}
@@ -116,6 +119,9 @@ services:
       - "8000:8000"
 
   gtfs:
+    env_file:
+      - path: ./.env
+        required: false
     profiles: [gtfs]
     restart: unless-stopped
     build:
@@ -126,8 +132,8 @@ services:
       disable: true
     environment:
       PYTHONPATH: /workspace/apps/api/src
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-amarelo}:${POSTGRES_PASSWORD:-amarelo}@postgres:5432/${POSTGRES_DB:-amarelo}}
+      S3_ENDPOINT_URL: ${COMPOSE_S3_ENDPOINT_URL:-http://s3:4566}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
       S3_BUCKET: ${S3_BUCKET:-raw-data}
@@ -143,6 +149,9 @@ services:
         condition: service_healthy
 
   collector:
+    env_file:
+      - path: ./.env
+        required: false
     profiles: [coleta]
     restart: unless-stopped
     build:
@@ -153,7 +162,7 @@ services:
       disable: true
     environment:
       PYTHONPATH: /workspace/apps/api/src
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-amarelo}:${POSTGRES_PASSWORD:-amarelo}@postgres:5432/${POSTGRES_DB:-amarelo}}
       CHAVE_API_OLHO_VIVO: ${CHAVE_API_OLHO_VIVO:-${OLHOVIVO_TOKEN:-${OLHO_VIVO_TOKEN:-}}}
       COLLECTION_INTERVAL_SECONDS: ${COLLECTION_INTERVAL_SECONDS:-30}
       GTFS_SOURCE_ID: ${GTFS_SOURCE_ID:-sptrans}
@@ -165,6 +174,9 @@ services:
         condition: service_healthy
 
   archiver:
+    env_file:
+      - path: ./.env
+        required: false
     profiles: [arquivo]
     restart: unless-stopped
     build:
@@ -179,8 +191,8 @@ services:
     environment:
       S3_RESTORE_MAP: /run/configs/storage-restore-map.json
       PYTHONPATH: /workspace/apps/api/src
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-amarelo}:${POSTGRES_PASSWORD:-amarelo}@postgres:5432/${POSTGRES_DB:-amarelo}}
+      S3_ENDPOINT_URL: ${COMPOSE_S3_ENDPOINT_URL:-http://s3:4566}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
       S3_BUCKET: ${S3_BUCKET:-raw-data}
@@ -192,6 +204,9 @@ services:
         condition: service_healthy
 
   reliability:
+    env_file:
+      - path: ./.env
+        required: false
     profiles: [relatorios]
     restart: unless-stopped
     build:
@@ -206,8 +221,8 @@ services:
     environment:
       S3_RESTORE_MAP: /run/configs/storage-restore-map.json
       PYTHONPATH: /workspace/apps/api/src
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-amarelo}:${POSTGRES_PASSWORD:-amarelo}@postgres:5432/${POSTGRES_DB:-amarelo}}
+      S3_ENDPOINT_URL: ${COMPOSE_S3_ENDPOINT_URL:-http://s3:4566}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
       S3_BUCKET: ${S3_BUCKET:-raw-data}
@@ -222,6 +237,9 @@ services:
         condition: service_healthy
 
   raw-publisher:
+    env_file:
+      - path: ./.env
+        required: false
     profiles: [publicacao]
     restart: unless-stopped
     build:
@@ -236,8 +254,8 @@ services:
     environment:
       S3_RESTORE_MAP: /run/configs/storage-restore-map.json
       PYTHONPATH: /workspace/apps/api/src
-      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://amarelo:amarelo@postgres:5432/amarelo}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://s3:4566}
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-amarelo}:${POSTGRES_PASSWORD:-amarelo}@postgres:5432/${POSTGRES_DB:-amarelo}}
+      S3_ENDPOINT_URL: ${COMPOSE_S3_ENDPOINT_URL:-http://s3:4566}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
       S3_BUCKET: ${S3_BUCKET:-raw-data}
