@@ -184,7 +184,35 @@ restaurações sucessivas. A migração de união `20261118_0005` mantém uma ú
 head Alembic para US02 e US32, sem reescrever migrações publicadas.
 
 No desenvolvimento são duas instâncias LocalStack com volumes distintos.
-Isso permite desligar o principal no ensaio, mas compartilham a máquina física.
+É possível desligar o principal no ensaio, mas ambos compartilham a máquina física.
+As duas usam `gresau/localstack-persist:3.8.1`, distribuição aberta baseada no
+LocalStack 3.8 com persistência. Na imagem Community anterior, `PERSISTENCE=1`
+sozinho não implementa a persistência nativa, restrita à edição paga; o ensaio
+real de recriação detectou essa limitação antes de concluir a correção.
+O [projeto da distribuição](https://github.com/GREsau/localstack-persist/tree/v3.8.1)
+é uma dependência de desenvolvimento, com versão fixada e persistência habilitada
+somente para S3 (`PERSIST_DEFAULT=0`, `PERSIST_S3=1`). Sua manutenção futura é
+limitada; mudança de versão ou substituição exige repetir o ensaio da CI.
+
+Os volumes anteriores `localstack_data` e `backup_data` permanecem declarados,
+sem montagem na imagem nova. O estado novo usa volumes exclusivos
+`localstack_persisted` e `backup_persisted` montados em `/persisted-data`, com
+layout suportado `s3/`. Não há importação automática ou remoção dos dados antigos.
+`PERSIST_BASE_DIR` não é suportada nesta versão e foi removida.
+Interrompa os produtores de forma controlada antes de atualizar containers.
+Não use `down --volumes` no ambiente que contém dados.
+Isso não recupera bytes já ausentes nem garante recuperação de encerramento
+abrupto; mantenha cópias independentes fora da máquina para dados importantes.
+
+O ensaio `uv run python scripts/check_localstack_persistence.py` usa os dois
+serviços S3 da configuração efetiva, mas cria um projeto aleatório com volumes
+exclusivos, credenciais de teste e portas locais aleatórias, sem iniciar API,
+coletores ou banco. Grava duas versões de um objeto sintético em cada S3,
+recria os containers preservando esses volumes e confere VersionId, SHA-256 e
+versão atual. Só os recursos desse projeto descartável são removidos ao fim.
+A CI executa esse ensaio; `--config-only` permite conferir a configuração sem
+daemon Docker. Ele não testa os dados existentes nem durabilidade em AWS.
+
 Em AWS use buckets privados versionados em Virgínia, preferencialmente com o
 backup em outra conta. Omita endpoints e chaves de teste e use role IAM com
 permissões mínimas; exemplo em `infra/aws/storage-policy.example.json`.

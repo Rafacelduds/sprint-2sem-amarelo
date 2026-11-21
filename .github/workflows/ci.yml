@@ -6,13 +6,27 @@ on:
     branches: [main]
 
 jobs:
+  s3-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+          enable-cache: true
+      - run: uv sync --all-packages --all-groups --frozen
+      - run: uv run python scripts/check_localstack_persistence.py
+
   backend:
     runs-on: ubuntu-latest
     services:
       s3-backup:
-        image: localstack/localstack:3.8
+        image: gresau/localstack-persist:3.8.1
         env:
           SERVICES: s3
+          PERSIST_DEFAULT: '0'
+          PERSIST_S3: '1'
         ports:
           - 4567:4566
         options: >-
@@ -30,9 +44,11 @@ jobs:
           --health-cmd "pg_isready -U amarelo -d amarelo_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
       s3:
-        image: localstack/localstack:3.8
+        image: gresau/localstack-persist:3.8.1
         env:
           SERVICES: s3
+          PERSIST_DEFAULT: '0'
+          PERSIST_S3: '1'
         ports:
           - 4566:4566
         options: >-
