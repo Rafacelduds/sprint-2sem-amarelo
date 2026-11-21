@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DocumentDetailsDocumentsIdentityGetData, DocumentDetailsDocumentsIdentityGetErrors, DocumentDetailsDocumentsIdentityGetResponses, DocumentPdfDocumentsIdentityPdfGetData, DocumentPdfDocumentsIdentityPdfGetErrors, DocumentPdfDocumentsIdentityPdfGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses, ScheduleCatalogSchedulesGetData, ScheduleCatalogSchedulesGetErrors, ScheduleCatalogSchedulesGetResponses, ScheduleDeparturesSchedulesRunIdDeparturesGetData, ScheduleDeparturesSchedulesRunIdDeparturesGetErrors, ScheduleDeparturesSchedulesRunIdDeparturesGetResponses, SearchDocumentsDocumentsGetData, SearchDocumentsDocumentsGetErrors, SearchDocumentsDocumentsGetResponses, StatusOperationsBackupsGetData, StatusOperationsBackupsGetErrors, StatusOperationsBackupsGetResponses } from './types.gen';
+import type { CatalogExportsRawGetData, CatalogExportsRawGetErrors, CatalogExportsRawGetResponses, CatalogNetworkCatalogGetData, CatalogNetworkCatalogGetResponses, CollectionStatusOperationsCollectionGetData, CollectionStatusOperationsCollectionGetResponses, DailyReliabilityReportsReliabilityDayGetData, DailyReliabilityReportsReliabilityDayGetErrors, DailyReliabilityReportsReliabilityDayGetResponses, DetailExportsRawDayGetData, DetailExportsRawDayGetErrors, DetailExportsRawDayGetResponses, DictionaryExportsRawDictionaryGetData, DictionaryExportsRawDictionaryGetResponses, DocumentDetailsDocumentsIdentityGetData, DocumentDetailsDocumentsIdentityGetErrors, DocumentDetailsDocumentsIdentityGetResponses, DocumentPdfDocumentsIdentityPdfGetData, DocumentPdfDocumentsIdentityPdfGetErrors, DocumentPdfDocumentsIdentityPdfGetResponses, DownloadExportsRawDayDownloadGetData, DownloadExportsRawDayDownloadGetErrors, DownloadExportsRawDayDownloadGetResponses, HealthHealthGetData, HealthHealthGetResponses, PositionsVehiclesPositionsGetData, PositionsVehiclesPositionsGetErrors, PositionsVehiclesPositionsGetResponses, RouteNetworkRoutesLineIdGetData, RouteNetworkRoutesLineIdGetErrors, RouteNetworkRoutesLineIdGetResponses, ScheduleCatalogSchedulesGetData, ScheduleCatalogSchedulesGetErrors, ScheduleCatalogSchedulesGetResponses, ScheduleDeparturesSchedulesRunIdDeparturesGetData, ScheduleDeparturesSchedulesRunIdDeparturesGetErrors, ScheduleDeparturesSchedulesRunIdDeparturesGetResponses, SearchDocumentsDocumentsGetData, SearchDocumentsDocumentsGetErrors, SearchDocumentsDocumentsGetResponses, StatusOperationsBackupsGetData, StatusOperationsBackupsGetErrors, StatusOperationsBackupsGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -184,6 +184,22 @@ export const statusOperationsBackupsGet = <ThrowOnError extends boolean = false>
             }
         ],
         url: '/operations/backups',
+        ...options
+    });
+};
+
+/**
+ * Collection Status
+ */
+export const collectionStatusOperationsCollectionGet = <ThrowOnError extends boolean = false>(options?: Options<CollectionStatusOperationsCollectionGetData, ThrowOnError>) => {
+    return (options?.client ?? client).get<CollectionStatusOperationsCollectionGetResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/operations/collection',
         ...options
     });
 };

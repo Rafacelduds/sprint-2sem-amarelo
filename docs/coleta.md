@@ -144,3 +144,26 @@ Na validação adicional da US29, passaram 30 testes, incluindo retentativas, re
 A imagem Docker também foi construída e executada com o coletor real. Após ajustar a quinta espera para 16 segundos, o ciclo no contêiner novamente gravou respostas, executou as cinco retentativas e terminou incompleto devido aos mesmos HTTP 500, com código de saída 1 esperado. A execução não foi deixada rodando continuamente.
 
 Referência externa: [documentação da API Olho Vivo/SPTrans](https://www.sptrans.com.br/desenvolvedores/api-do-olho-vivo-guia-de-referencia/documentacao-api/), consultada em 18/11/2026.
+
+## Acompanhamento restrito da coleta (US01)
+
+A navegação **Coleta · equipe** (`#coleta`) consulta `GET /operations/collection`
+com o mesmo `OPERATIONS_TOKEN` do painel de backups. A chave fica apenas em memória
+na tela, nunca em URL ou armazenamento do navegador; use HTTPS fora do ambiente local.
+O endpoint é somente leitura e responde com `Cache-Control: no-store`.
+
+A consulta apresenta os últimos vinte ciclos, horários originais, respostas gravadas,
+posições novas após deduplicação e último sucesso integral. Atualiza a cada quinze
+segundos. Sem banco ou autorização, a tela informa erro e não apresenta a consulta
+anterior como atual. Não expõe corpos de respostas, URLs privadas nem tokens.
+
+Atividade recente significa início/conclusão de ciclo persistido nos últimos
+`max(120, 3 × intervalo do último ciclo)` segundos. Não é heartbeat nem garantia de
+processo ativo; o estado inativo/atrasado tem essa margem de detecção. Sem ciclos,
+a idade é desconhecida. Captura e início/conclusão continuam distintos: consultar
+ou reiniciar a API não renova esses horários. Um ciclo incompleto pode preservar
+respostas válidas e não equivale a viagem cancelada. O mapa usa seu adaptador separado.
+
+A guarda imutável (US12), publicação (US09) e relatório (US13) continuam processos
+próprios; os atalhos da tela não executam esses processos. Configure e execute o
+coletor conforme as seções anteriores antes de esperar novos ciclos no painel.
