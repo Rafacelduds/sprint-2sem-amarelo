@@ -39,6 +39,13 @@ excluir versões somente em `backups/database/` e `backups/runs/`.
 
 ### Painel de operação
 
+**Pendência de adequação ao acesso público (21/11/2026):** a chave descrita
+abaixo é uma restrição da implementação atual, introduzida pelo assistente,
+sem exigência do cliente. Daniel confirmou que painéis e API devem ser públicos,
+sem login. A consulta do painel US32 precisa ser adequada; essa correção ainda
+não foi implementada. Contexto, alcance e encaminhamento no
+[registro de pendências da integração](evidencias/2026-11-21-us05.md#pendências-de-produto-na-integração--21112026).
+
 A navegação **Backups · equipe** (`#backups`) reutiliza a aplicação que contém os
 [downloads da US09](publicacao-brutos.md). A tela só consulta dados: não executa
 backup, não disponibiliza dumps e não inicia restauração.

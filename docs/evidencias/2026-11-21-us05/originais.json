@@ -1,0 +1,20 @@
+[
+  {
+    "filename": "ANEXO_III_3_2_PROCEDIMENTO_PARA_AVALIACAO.pdf",
+    "id": "0ed3fa88-fa6f-5a7d-88ff-9363966eab78",
+    "created": true,
+    "repeated_created": false,
+    "sha256": "00571a94e33ee3dfa736467b5fa7ed3584d5bf691ce9b657091d11a803fb2a3b",
+    "bytes": 20208273,
+    "catalogued_at": "2026-11-21T16:37:37.525613Z"
+  },
+  {
+    "filename": "IQT.GSO.005.00 - Ficha Técnica do Indicador ICF.pdf",
+    "id": "99cda40f-24c3-5dcf-955f-36daa8ffec6b",
+    "created": true,
+    "repeated_created": false,
+    "sha256": "79f95f317474dc3cb6bb5454f56369a0436dd6bd97834596188b20d9620bd069",
+    "bytes": 238815,
+    "catalogued_at": "2026-11-21T16:37:38.787847Z"
+  }
+]

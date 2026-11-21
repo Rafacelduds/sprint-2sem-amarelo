@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
-  documentPdfUrl,
+  getDocumentPdf,
   getDocuments,
   pageSize,
   type DocumentFilters,
@@ -28,6 +28,50 @@ const catalogueDate = new Intl.DateTimeFormat("pt-BR", {
 });
 
 function DocumentCard({ document }: { document: DocumentView }) {
+  const [pdf, setPdf] = useState<{ busy: boolean; error?: string }>({ busy: false });
+  const pending = useRef<{ controller: AbortController; tab: Window } | null>(null);
+  useEffect(() => () => {
+    pending.current?.controller.abort();
+    pending.current?.tab.close();
+    pending.current = null;
+  }, []);
+
+  async function openPdf() {
+    if (pending.current) return;
+    // Reservar a aba no clique evita bloqueio de popup após a requisição assíncrona.
+    const tab = window.open("about:blank", "_blank");
+    if (!tab) {
+      setPdf({ busy: false, error: "Permita abrir uma nova aba e tente novamente." });
+      return;
+    }
+    tab.opener = null;
+    const current = { controller: new AbortController(), tab };
+    pending.current = current;
+    setPdf({ busy: true });
+    const timeout = window.setTimeout(() => current.controller.abort(), 120_000);
+    try {
+      const blob = await getDocumentPdf(document, current.controller.signal);
+      if (pending.current !== current) return;
+      if (tab.closed) throw new Error("A aba do PDF foi fechada. Tente novamente.");
+      const url = URL.createObjectURL(blob);
+      try {
+        tab.location.replace(url);
+      } finally {
+        // O leitor do navegador precisa carregar o Blob antes de liberar a URL.
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+      setPdf({ busy: false });
+    } catch (error) {
+      tab.close();
+      if (pending.current === current) setPdf({ busy: false, error: current.controller.signal.aborted
+        ? "A abertura do PDF demorou demais. Tente novamente."
+        : error instanceof Error ? error.message : "Não foi possível abrir o PDF. Tente novamente." });
+    } finally {
+      window.clearTimeout(timeout);
+      if (pending.current === current) pending.current = null;
+    }
+  }
+
   return (
     <article className="document-card">
       <div className="document-card-heading">
@@ -35,16 +79,18 @@ function DocumentCard({ document }: { document: DocumentView }) {
           <span className="document-type">{types[document.document_type]}</span>
           <h2>{document.title}</h2>
         </div>
-        <a
+        <button
           className="document-pdf"
-          href={documentPdfUrl(document.id)}
-          target="_blank"
-          rel="noopener noreferrer"
+          type="button"
+          disabled={pdf.busy}
+          onClick={() => void openPdf()}
           aria-label={`Abrir PDF: ${document.title} (nova aba)`}
         >
-          Abrir PDF <span aria-hidden="true">↗</span>
-        </a>
+          {pdf.busy ? "Abrindo PDF…" : pdf.error ? "Tentar PDF novamente" : "Abrir PDF"} <span aria-hidden="true">↗</span>
+        </button>
       </div>
+      {pdf.error && <p role="alert" className="document-error">{pdf.error}</p>}
+      {pdf.busy && <p role="status">Preparando o PDF original…</p>}
       <dl className="document-metadata">
         <div>
           <dt>Órgão emissor</dt>

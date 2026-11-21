@@ -1,0 +1,45 @@
+name: us05-validation
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: us05_validation
+      POSTGRES_USER: amarelo
+      POSTGRES_PASSWORD: test-only
+    ports: ['127.0.0.1:5545:5432']
+    volumes: ['postgres:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U amarelo -d us05_validation']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  s3:
+    image: gresau/localstack-persist:3.8.1
+    environment:
+      SERVICES: s3
+      PERSIST_DEFAULT: '0'
+      PERSIST_S3: '1'
+    ports: ['127.0.0.1:4575:4566']
+    volumes: ['s3:/persisted-data']
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4566/_localstack/health']
+      interval: 2s
+      timeout: 3s
+      retries: 40
+  s3-backup:
+    image: gresau/localstack-persist:3.8.1
+    environment:
+      SERVICES: s3
+      PERSIST_DEFAULT: '0'
+      PERSIST_S3: '1'
+    ports: ['127.0.0.1:4576:4566']
+    volumes: ['s3-backup:/persisted-data']
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4566/_localstack/health']
+      interval: 2s
+      timeout: 3s
+      retries: 40
+volumes:
+  postgres:
+  s3:
+  s3-backup:
