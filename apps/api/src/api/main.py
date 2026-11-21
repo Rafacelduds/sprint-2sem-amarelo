@@ -32,6 +32,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["ETag"],
     )
 
     @application.get("/health", tags=["health"], response_model=HealthResponse)

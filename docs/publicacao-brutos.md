@@ -47,6 +47,11 @@ compara o ETag com o SHA-256 anunciado e o tamanho recebido, sem apresentar essa
 comparação como um novo cálculo de hash no navegador. A conclusão informa que o
 arquivo foi recebido, sem afirmar que o usuário já o salvou em disco.
 
+Quando `VITE_API_URL` aponta diretamente para uma API em outra origem, configure
+essa origem do frontend em `CORS_ORIGINS`. A API expõe `ETag` nas respostas CORS
+para permitir a mesma conferência de revisão usada com o proxy; isso não libera
+origens fora da lista configurada.
+
 O navegador recebe o arquivo completo como Blob antes de iniciar o salvamento;
 considere memória disponível ao baixar dias grandes, especialmente no celular.
 O ensaio desta interface usou um arquivo de 416.784 bytes, não um dia completo de
