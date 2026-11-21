@@ -1,0 +1,64 @@
+- navigation "Navegação principal":
+  - generic: ObservaÔnibus São Paulo
+  - link "Mapa ao vivo":
+    - /url: "#mapa"
+  - link "Acervo documental":
+    - /url: "#acervo"
+  - link "Programação":
+    - /url: "#programacao"
+  - link "Confiabilidade":
+    - /url: "#confiabilidade"
+  - link "Dados brutos":
+    - /url: "#dados-brutos"
+  - link "Backups · equipe":
+    - /url: "#backups"
+- main:
+  - text: DOCUMENTOS DE REFERÊNCIA
+  - heading "Acervo documental" [level=1]
+  - paragraph: Consulte contratos, procedimentos e fichas de indicadores do transporte público. Acesse os PDFs originais e confira sua procedência.
+  - form "Filtrar documentos":
+    - text: Tipo de documento
+    - combobox "Tipo de documento":
+      - option "Todos os tipos" [selected]
+      - option "Contrato"
+      - option "Aditivo"
+      - option "Procedimento"
+      - option "Ficha de indicador"
+    - text: Filtrar período por
+    - combobox "Filtrar período por":
+      - option "Data do documento" [selected]
+      - option "Data de inclusão no acervo"
+    - text: De
+    - textbox "De"
+    - text: Até
+    - textbox "Até"
+    - button "Aplicar filtros"
+    - button "Limpar"
+    - paragraph: Ao definir um período, documentos sem data identificada ficam fora do resultado.
+  - region "Resultados do acervo":
+    - heading "Documentos" [level=2]
+    - status: 2 documentos encontrados
+    - article:
+      - generic: Ficha de indicador
+      - heading "Ficha Técnica do Indicador ICF — Cumprimento de Frota (IQT.GSO.005.00)" [level=2]
+      - 'button "Abrir PDF: Ficha Técnica do Indicador ICF — Cumprimento de Frota (IQT.GSO.005.00) (nova aba)"': Tentar PDF novamente ↗
+      - alert: PDF indisponível. Tente novamente em instantes.
+      - term: Órgão emissor
+      - definition: Não confirmado
+      - term: Data do documento
+      - definition: 01/09/2021
+      - term: Incluído no acervo
+      - definition: 21/11/2026, 13:37
+      - generic "Procedência e detalhes"
+    - article:
+      - generic: Procedimento
+      - heading "Anexo 3.2 — Procedimentos de Avaliação dos Serviços" [level=2]
+      - 'button "Abrir PDF: Anexo 3.2 — Procedimentos de Avaliação dos Serviços (nova aba)"': Abrir PDF ↗
+      - term: Órgão emissor
+      - definition: Não confirmado
+      - term: Data do documento
+      - definition: Não identificada
+      - term: Incluído no acervo
+      - definition: 21/11/2026, 13:37
+      - generic "Procedência e detalhes"
+  - paragraph: A presença no acervo não confirma a vigência do documento. Confira a fonte e as observações. PDFs abrem em uma nova aba.

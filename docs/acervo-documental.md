@@ -23,8 +23,11 @@ Cada documento mostra título, categoria, órgão e as duas datas separadamente.
 Data documental é exibida sem conversão de fuso; inclusão usa São Paulo.
 Campos desconhecidos permanecem identificados. Abra **Procedência e detalhes**
 para consultar fonte, ressalvas, nome do arquivo, tamanho e SHA-256. **Abrir PDF**
-abre o original pela API em nova aba; indisponibilidade/integridade são tratadas
-pelo endpoint, que pode retornar 503 em vez de um PDF. Não há pré-visualização,
+reserva uma nova aba no clique e recebe o original pela API. A tela confere tipo
+PDF e tamanho; o servidor verifica o hash e a versão antes de enviar os bytes.
+Em falha, fecha a aba vazia e mostra uma mensagem no item, com **Tentar PDF
+novamente**. Bloqueio de novas abas também recebe orientação. A abertura tem
+limite de dois minutos e é cancelada ao retirar o item da tela. Não há pré-visualização,
 edição, upload ou correção de metadados pela tela.
 
 A navegação usa `#mapa` e `#acervo`, com suporte a links diretos e voltar/avançar
@@ -52,6 +55,40 @@ essa data com emissão, versão, captura histórica, vigência ou início do pra
 O cadastro não verifica se a fonte é oficial nem se o documento está vigente:
 essa conferência é responsabilidade de quem prepara os metadados. A URL de fonte
 é registrada como texto e não é acessada pela CLI.
+
+## Carregar os documentos recebidos
+
+Os dois exemplos abaixo correspondem ao conjunto local conferido em 21/11/2026:
+o anexo é um `procedimento`, e a ficha ICF é `ficha_indicador`. O DOCX recebido
+contém links de referência; não é PDF nem contrato e não deve ser convertido em
+contrato no catálogo. Não foram identificados contratos completos ou aditivos
+nesse conjunto. A escolha do conjunto para aceite permanece com o PO.
+
+Depois de configurar PostgreSQL/S3 e aplicar as migrações, indique a pasta dos
+originais e execute na raiz do projeto (Bash/WSL):
+
+```bash
+DOCUMENTS_DIR="/caminho/para/Licitação + Contratos"
+uv run --package amarelo-api python -m api.documents register \
+  --file "$DOCUMENTS_DIR/ANEXO_III_3_2_PROCEDIMENTO_PARA_AVALIACAO.pdf" \
+  --metadata apps/api/examples/documents/procedimentos-avaliacao.json
+uv run --package amarelo-api python -m api.documents register \
+  --file "$DOCUMENTS_DIR/IQT.GSO.005.00 - Ficha Técnica do Indicador ICF.pdf" \
+  --metadata apps/api/examples/documents/ficha-icf.json
+```
+
+Revise os metadados antes da primeira inclusão. A ficha identifica sua versão
+em 01/09/2021; a data do anexo e o órgão emissor permanecem sem confirmação nos
+exemplos. Datas das fichas internas não são usadas como data do anexo inteiro.
+Repetir os comandos com os mesmos originais e metadados retorna `created=false`,
+sem alterar identidade, inclusão ou arquivo. Fontes ficam fora do Git; o cadastro
+é uma etapa explícita de operação, sem carga automática ao iniciar a aplicação.
+
+Banco **e** S3 precisam de armazenamento persistente no ambiente escolhido.
+Reiniciar só a API não demonstra durabilidade dos originais. Após reinício ou
+recriação dos serviços com seus volumes preservados, consulte `#acervo` e abra
+os dois PDFs novamente. O roteiro e os resultados do ensaio com esses originais
+estão em [evidências da integração](evidencias/2026-11-21-us05.md).
 
 ## Executar o cadastro
 
@@ -161,6 +198,13 @@ O arquivo temporário é removido ao terminar a resposta, inclusive em falhas.
 O download exige espaço temporário e transfere o arquivo inteiro do S3 para
 verificar integridade, mesmo se o navegador depois pedir apenas um trecho.
 Não há cache ou limite global de concorrência de downloads nesta etapa.
+
+Na tela, o PDF completo fica em um Blob antes de abrir a nova aba; esta etapa
+usa memória proporcional ao arquivo. A URL temporária é liberada após um minuto.
+O ensaio cobre o maior original recebido (aproximadamente 20 MB), sem estabelecer
+um teto geral de tamanho. O leitor de PDF depende do navegador; bloqueios de
+popup e suporte ao formato podem variar. O nome original continua no catálogo e
+no endpoint; o leitor de uma URL Blob pode sugerir outro nome ao salvar.
 
 Resultados sem correspondência retornam 200 com lista vazia; ID inexistente, 404;
 tipo/data/UUID/paginação inválidos ou período invertido, 422; falha do catálogo,

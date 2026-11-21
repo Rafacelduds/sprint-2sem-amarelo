@@ -36,6 +36,7 @@ function urlOf(input: RequestInfo | URL) {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("consulta do acervo", () => {
@@ -62,12 +63,7 @@ describe("consulta do acervo", () => {
     expect(screen.getByText("01/09/2021")).toBeInTheDocument();
     expect(screen.getByText("18/11/2026, 23:30")).toBeInTheDocument();
     expect(screen.getByText("Não confirmado")).toBeInTheDocument();
-    const link = screen.getByRole("link", { name: /Abrir PDF: Ficha ICF/ });
-    expect(link).toHaveAttribute(
-      "href",
-      expect.stringContaining(`/api/documents/${document.id}/pdf`),
-    );
-    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("button", { name: /Abrir PDF: Ficha ICF/ })).toBeEnabled();
     fireEvent.click(screen.getByText("Procedência e detalhes"));
     expect(screen.getByText(document.source)).toBeInTheDocument();
     expect(screen.getByText(document.sha256)).toBeInTheDocument();
@@ -194,5 +190,85 @@ describe("consulta do acervo", () => {
       screen.queryByRole("heading", { name: "Ficha ICF" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Não identificada")).toBeInTheDocument();
+  });
+});
+
+describe("abertura do PDF original", () => {
+  function setup(pdfResponses: Response[]) {
+    const tab = { opener: {}, closed: false, close: vi.fn(), location: { replace: vi.fn() } };
+    vi.spyOn(window, "open").mockReturnValue(tab as unknown as Window);
+    const create = vi.fn<(blob: Blob) => string>(() => "blob:original-verificado");
+    vi.stubGlobal("URL", class extends URL {
+      static createObjectURL = create;
+      static revokeObjectURL = vi.fn();
+    });
+    const urls: URL[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = urlOf(input);
+      urls.push(url);
+      return url.pathname.endsWith("/pdf") ? pdfResponses.shift()! : Response.json(page());
+    }));
+    return { tab, create, urls };
+  }
+
+  it("mostra falha sem expor resposta interna, fecha aba vazia e permite recuperar o mesmo original", async () => {
+    const bytes = new Uint8Array(document.size);
+    const { tab, create, urls } = setup([
+      Response.json({ detail: "segredo interno" }, { status: 503 }),
+      new Response(bytes, { headers: { "Content-Type": "application/pdf" } }),
+    ]);
+    render(<DocumentsPage />);
+    const open = await screen.findByRole("button", { name: /Abrir PDF: Ficha ICF/ });
+    fireEvent.click(open);
+    expect(await screen.findByRole("alert")).toHaveTextContent("PDF indisponível");
+    expect(screen.queryByText(/segredo interno/)).not.toBeInTheDocument();
+    expect(tab.close).toHaveBeenCalledOnce();
+    expect(create).not.toHaveBeenCalled();
+    fireEvent.click(open);
+    await waitFor(() => expect(tab.location.replace).toHaveBeenCalledWith("blob:original-verificado"));
+    expect(urls.filter(url => url.pathname.endsWith(`/documents/${document.id}/pdf`))).toHaveLength(2);
+    expect(tab.opener).toBeNull();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const blob = create.mock.calls[0][0] as Blob;
+    expect(blob.size).toBe(document.size);
+  });
+
+  it.each([
+    ["text/html", document.size, "não retornou um PDF"],
+    ["application/pdf", 5, "incompleto"],
+  ])("rejeita resposta %s de %s bytes", async (type, size, message) => {
+    const { tab, create } = setup([new Response(new Uint8Array(size), { headers: { "Content-Type": type } })]);
+    render(<DocumentsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Abrir PDF: Ficha ICF/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(tab.close).toHaveBeenCalledOnce();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("orienta liberar nova aba quando o navegador bloqueia sua abertura", async () => {
+    setup([]);
+    vi.spyOn(window, "open").mockReturnValue(null);
+    render(<DocumentsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Abrir PDF: Ficha ICF/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Permita abrir uma nova aba");
+  });
+
+  it("cancela a abertura pendente e fecha a aba vazia ao sair do acervo", async () => {
+    const { tab, create } = setup([]);
+    let signal: AbortSignal | null | undefined;
+    let finish!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!urlOf(input).pathname.endsWith("/pdf")) return Response.json(page());
+      signal = init?.signal;
+      return new Promise<Response>(resolve => { finish = resolve; });
+    }));
+    const view = render(<DocumentsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: /Abrir PDF: Ficha ICF/ }));
+    expect(screen.getByText("Preparando o PDF original…")).toBeInTheDocument();
+    view.unmount();
+    expect(signal?.aborted).toBe(true);
+    expect(tab.close).toHaveBeenCalledOnce();
+    await act(async () => finish(new Response(new Uint8Array(document.size), { headers: { "Content-Type": "application/pdf" } })));
+    expect(create).not.toHaveBeenCalled();
   });
 });
