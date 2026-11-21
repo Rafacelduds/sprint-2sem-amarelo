@@ -9,9 +9,21 @@ vi.mock("./DocumentsPage", () => ({
 vi.mock("./SchedulesPage", () => ({ default: () => <main>Consulta de programação</main> }));
 vi.mock("./ReliabilityPage", () => ({ default: () => <main>Consulta de confiabilidade</main> }));
 vi.mock("./ExportsPage", () => ({ default: () => <main>Consulta de dados brutos</main> }));
+vi.mock("./BackupsPage", () => ({ default: () => <main>Painel de backups</main> }));
 afterEach(() => {
   cleanup();
   window.history.replaceState(null, "", "/");
+});
+
+it("abre backups e mantém o acesso aos dados brutos da US09", () => {
+  window.history.replaceState(null, "", "/#backups");
+  render(<App />);
+  expect(screen.getByText("Painel de backups")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Backups · equipe" })).toHaveAttribute("aria-current", "page");
+  window.history.replaceState(null, "", "/#dados-brutos");
+  fireEvent(window, new HashChangeEvent("hashchange"));
+  expect(screen.getByText("Consulta de dados brutos")).toBeInTheDocument();
+  expect(screen.queryByText("Painel de backups")).not.toBeInTheDocument();
 });
 
 it("abre dados brutos por link direto e preserva a navegação existente", () => {

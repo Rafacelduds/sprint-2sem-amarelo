@@ -2,14 +2,16 @@ import argparse
 import asyncio
 import json
 import logging
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pydantic import SecretStr
-from sqlalchemy import func, select, text
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from api.backup.models import BackupRun
+from api.backup.models import BackupAttempt, BackupRun, BackupWorker
+from api.backup.monitor import backup_due, heartbeat, pulse, record_attempt
 from api.backup.service import BackupService, restore
 from api.config import Settings
 from api.storage.__main__ import archive_from_settings
@@ -37,13 +39,6 @@ def backup_from_settings(settings: BackupSettings) -> S3Archive:
         access_key=settings.backup_s3_access_key,
         secret_key=settings.backup_s3_secret_key,
     )
-
-
-def backup_due(last: datetime | None, now: datetime) -> bool:
-    cutoff = now.replace(hour=3, minute=0, second=0, microsecond=0)
-    if now < cutoff:
-        cutoff -= timedelta(days=1)
-    return last is None or last < cutoff
 
 
 async def main() -> None:
@@ -93,24 +88,49 @@ async def main() -> None:
     )
     try:
         async with exclusive(engine, 710132) as guard:
-            while True:
-                await guard.execute(text("SELECT 1"))
-                await guard.commit()
-                async with sessions() as session:
-                    last = await session.scalar(select(func.max(BackupRun.completed_at)))
-                if args.command == "run" or backup_due(last, datetime.now(UTC)):
-                    try:
-                        ref = await service.create(version)
-                        print(ref.model_dump_json(), flush=True)
-                    except Exception as exc:
-                        logger.error("backup_failed type=%s", type(exc).__name__)
-                        if args.command == "run":
-                            raise
-                        await asyncio.sleep(300)
-                        continue
-                if args.command == "run":
-                    break
-                await asyncio.sleep(60)
+            async with sessions.begin() as session:
+                await session.execute(
+                    update(BackupAttempt)
+                    .where(BackupAttempt.status == "running")
+                    .values(status="failed", finished_at=datetime.now(UTC))
+                )
+            if args.command == "watch":
+                await pulse(sessions)
+            ticker = asyncio.create_task(heartbeat(sessions)) if args.command == "watch" else None
+            try:
+                while True:
+                    await guard.execute(text("SELECT 1"))
+                    await guard.commit()
+                    async with sessions() as session:
+                        last = await session.scalar(select(func.max(BackupRun.completed_at)))
+                    if args.command == "run" or backup_due(last, datetime.now(UTC)):
+                        try:
+                            ref = await record_attempt(service, version)
+                            async with sessions.begin() as session:
+                                await session.execute(update(BackupWorker).values(retry_at=None))
+                            print(ref.model_dump_json(), flush=True)
+                        except Exception as exc:
+                            logger.error("backup_failed type=%s", type(exc).__name__)
+                            if args.command == "run":
+                                raise
+                            async with sessions.begin() as session:
+                                await session.execute(
+                                    update(BackupWorker).values(
+                                        retry_at=datetime.now(UTC) + timedelta(seconds=300)
+                                    )
+                                )
+                            await asyncio.sleep(300)
+                            continue
+                    if args.command == "run":
+                        break
+                    await asyncio.sleep(60)
+            finally:
+                if ticker:
+                    ticker.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await ticker
+                    async with sessions.begin() as session:
+                        await session.execute(delete(BackupWorker))
     finally:
         await engine.dispose()
 
